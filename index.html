@@ -2005,7 +2005,7 @@
                                     <td>${new Date(user.registrationDate || Date.now()).toLocaleDateString('de-DE')}</td>
                                     <td>
                                         <button class="action-btn view" onclick="sendEmailToCustomer('${user.customerId}')" title="E-Mail senden">📧 E-Mail</button>
-                                        <button class="action-btn delete" onclick="deleteCustomerAccount('${user.customerId}')" title="Konto löschen">🗑️ Löschen</button>
+                                        <button class="action-btn delete" onclick="stornierenBestellung(order.id, (currentMaster ? 'master' : 'new'))" onclick="deleteCustomerAccount('${user.customerId}')" title="Konto löschen">🗑️ Löschen</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -2077,7 +2077,7 @@
                                     <td>
                                         <button class="action-btn view" onclick="viewOrderDetails('${order.orderId}')" title="Details anzeigen">👁️ Details</button>
                                         ${order.status !== 'cancelled' && order.status !== 'completed' ? 
-                                            `<button class="action-btn delete" onclick="cancelOrder('${order.orderId}')" title="Bestellung stornieren">❌ Stornieren</button>` : 
+                                            `<button class="action-btn delete" onclick="stornierenBestellung(order.id, (currentMaster ? 'master' : 'new'))" onclick="cancelOrder('${order.orderId}')" title="Bestellung stornieren">❌ Stornieren</button>` : 
                                             ''}
                                     </td>
                                 </tr>
@@ -4042,61 +4042,44 @@ ${order.shippingAddress.country}`;
             console.log('✅ DOM bereits geladen, initialisiere...');
             init();
         }
-    </script>
+    
 
-<!-- 🛠 Erweiterte Bestellfunktionen -->
-<div id="orderDetailModal" class="modal">
-  <div class="modal-content">
-    <span class="close" onclick="document.getElementById('orderDetailModal').style.display='none'">&times;</span>
-    <div id="orderDetailsContent"></div>
-  </div>
-</div>
 
-<script>
-function showOrderDetails(orderId) {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
+function stornierenBestellung(orderId, context = 'new') {
+    const reason = prompt("Warum soll diese Bestellung storniert werden?");
+    if (!reason) return;
 
-    const html = \`
-        <h3>🧾 Bestellung \${order.id}</h3>
-        <p><strong>Kunde:</strong> \${order.customerName}</p>
-        <p><strong>Adresse:</strong> \${order.address}</p>
-        <p><strong>Status:</strong> \${order.status}</p>
-        <p><strong>Gesamt:</strong> €\${order.total?.toFixed(2) || 0}</p>
-        <hr>
-        <h4>📦 Artikel:</h4>
-        <ul>\${order.items?.map(item => \`<li>\${item.name} × \${item.quantity}</li>\`).join('') || ''}</ul>
-    \`;
+    const orderIndex = orders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return;
 
-    document.getElementById("orderDetailsContent").innerHTML = html;
-    document.getElementById("orderDetailModal").style.display = "block";
+    orders[orderIndex].status = 'cancelled';
+    orders[orderIndex].cancelReason = reason;
+
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    showNotification('🚫 Bestellung wurde storniert');
+
+    if (context === 'new') showNewOrders();
+    if (context === 'master') showMasterOrders();
 }
 
-function markOrderAsShipped(orderId) {
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = 'completed';
-        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-        showNotification(`✅ Bestellung \${orderId} wurde als 'Geliefert' markiert.`);
-        renderNewOrders?.(); renderMasterOrders?.();
+function bearbeitenBestellung(orderId) {
+    if (!currentMaster) {
+        showNotification('⚠️ Kein Mitarbeiter angemeldet!');
+        return;
     }
+
+    const orderIndex = orders.findIndex(o => o.id === orderId);
+    if (orderIndex === -1) return;
+
+    orders[orderIndex].status = 'processing';
+    orders[orderIndex].assignedTo = currentMaster.name;
+
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    showNotification(`🛠️ Bestellung wird nun bearbeitet von ${currentMaster.name}`);
+    showNewOrders();
 }
 
-function cancelOrderByMaster(orderId) {
-    if (!confirm('❌ Möchten Sie die Bestellung wirklich stornieren?')) return;
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = 'cancelled';
-        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-        showNotification(`🚫 Bestellung \${orderId} wurde storniert.`);
-        renderNewOrders?.(); renderMasterOrders?.();
-    }
-}
 
-function editOrder(orderId) {
-    alert('✏️ Bearbeiten-Funktion für Bestellung ' + orderId + ' folgt in Kürze...');
-}
 </script>
-
 </body>
 </html>
