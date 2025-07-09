@@ -2027,6 +2027,39 @@
                 renderCustomers(filteredUsers);
             });
         }
+		
+		function showMasterOrders() {
+		  const orders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+		  const filter = document.getElementById('orderStatusFilter')?.value;
+		  const ordersList = document.getElementById('masterOrdersList');
+
+		  if (!ordersList) return;
+
+		  const filteredOrders = filter ? orders.filter(o => o.status === filter) : orders;
+
+		  if (filteredOrders.length === 0) {
+			ordersList.innerHTML = '<p style="color: #8d6e63;">Keine Bestellungen gefunden.</p>';
+			return;
+		  }
+
+		  ordersList.innerHTML = filteredOrders.map(order => `
+			<div class="order-item">
+			  <strong>#${order.orderId}</strong> - ${order.customerName} (${order.customerEmail})<br>
+			  <small>${new Date(order.orderDate).toLocaleString('de-DE')}</small><br>
+			  <div style="margin-top: 0.5rem;">
+				<span class="order-status ${order.status === 'pending' ? 'status-pending' : order.status === 'processing' ? 'status-processing' : order.status === 'completed' ? 'status-completed' : 'status-cancelled'}">
+				  ${order.status === 'pending' ? 'NEU' : order.status === 'processing' ? 'in Arbeit' : order.status === 'completed' ? 'Geliefert' : 'Storniert'}
+				</span>
+				${order.assignedTo ? `<span style="display: block; margin-top: 0.25rem; font-size: 0.85rem; color: #8d6e63;">von ${order.assignedTo}</span>` : ''}
+			  </div>
+			  <div style="margin-top: 0.5rem;">
+				<button class="action-btn view" onclick="viewOrderDetailsInModal('${order.orderId}')">Details</button>
+				<button class="action-btn edit" onclick="processOrder('${order.orderId}')">Bearbeiten</button>
+				<button class="action-btn delete" onclick="cancelOrderFromModal('${order.orderId}')">Stornieren</button>
+			  </div>
+			</div>
+		  `).join('');
+		}
 
         function loadMasterOrders() {
             const statusFilter = document.getElementById('orderStatusFilter');
@@ -2903,7 +2936,6 @@ ${order.shippingAddress.country}`;
 
 		function showNewOrders() {
 		  const orders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
-		  const newOrders = orders.filter(o => o.status === 'pending');
 		  const ordersList = document.getElementById('newOrdersList');
 		  const modal = document.getElementById('newOrdersModal');
 
@@ -2911,10 +2943,71 @@ ${order.shippingAddress.country}`;
 
 		  if (!ordersList) return;
 
-		  if (newOrders.length === 0) {
-			ordersList.innerHTML = '<p style="color: #8d6e63;">Keine neuen Bestellungen.</p>';
+		  // Bestellungen zeigen, die NICHT den Status "completed" oder "cancelled" haben
+		  const visibleOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
+
+		  if (visibleOrders.length === 0) {
+			ordersList.innerHTML = '<p style="color: #8d6e63;">Keine offenen Bestellungen.</p>';
 			return;
 		  }
+
+		  ordersList.innerHTML = `
+			<div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+			  <h3 style="color: #ff6b35; margin-bottom: 0.5rem;">📊 Übersicht</h3>
+			  <p><strong>${visibleOrders.length}</strong> offene Bestellung(en)</p>
+			  <p>Gesamtwert: <strong>€${visibleOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2)}</strong></p>
+			</div>
+			${visibleOrders.map(order => `
+			  <div class="cart-item" style="border-left: 4px solid #ff6b35;">
+				<div>
+				  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+					<strong>Bestellung #${order.orderId}</strong>
+					<span style="background: ${order.status === 'pending' ? '#ff6b35' : '#ff9800'}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">
+					  ${order.status === 'pending' ? 'NEU' : 'in Arbeit'}
+					</span>
+				  </div>
+				  <div style="margin-bottom: 0.5rem;">
+					<strong>Kunde:</strong> ${order.customerName} (${order.customerEmail})<br>
+					<strong>Bestellt am:</strong> ${new Date(order.orderDate).toLocaleString('de-DE')}<br>
+					<strong>Artikel:</strong> ${order.items.length} Produkt(e)
+				  </div>
+				  <div style="font-size: 0.9rem; color: #8d6e63; margin-bottom: 0.5rem;">
+					${order.items.map(item => `${item.name} (${item.quantity}x €${item.price.toFixed(2)})`).join(', ')}
+				  </div>
+				  <div style="margin-bottom: 0.5rem;">
+					<strong>Lieferadresse:</strong><br>
+					${order.shippingAddress.address}<br>
+					${order.shippingAddress.zip} ${order.shippingAddress.city}, ${order.shippingAddress.country}
+				  </div>
+				  <div style="display: flex; justify-content: space-between; align-items: center;">
+					<div>
+					  <strong>Zahlungsmethode:</strong> ${order.paymentMethod}<br>
+					  <strong>Tracking:</strong> ${order.trackingNumber || '–'}<br>
+					  ${order.assignedTo ? `<span style='color:#8d6e63;'>👤 ${order.assignedTo}</span>` : ''}
+					</div>
+					<div style="text-align: right;">
+					  <div style="font-size: 1.2rem; font-weight: bold; color: #ff6b35;">€${order.total.toFixed(2)}</div>
+					  ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+					</div>
+				  </div>
+				</div>
+				<div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+				  <button class="btn" onclick="processOrder('${order.orderId}')" style="background: #4caf50; width: auto; padding: 0.5rem 1rem;">
+					✅ Bearbeiten
+				  </button>
+				  <button class="btn" onclick="viewOrderDetailsInModal('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.5rem 1rem;">
+					👁️ Details
+				  </button>
+				  <button class="btn" onclick="quickUpdateOrderStatus('${order.orderId}', 'completed')" style="background: #ff9800; width: auto; padding: 0.5rem 1rem;">
+					📦 Versenden
+				  </button>
+				  <button class="btn" onclick="cancelOrderFromModal('${order.orderId}')" style="background: #f44336; width: auto; padding: 0.5rem 1rem;">
+					❌ Stornieren
+				  </button>
+				</div>
+			  </div>
+			`).join('')}`;
+		}
 
 		  ordersList.innerHTML = `
 			<div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
