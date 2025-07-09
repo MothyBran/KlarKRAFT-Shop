@@ -1064,7 +1064,7 @@
                     <button type="button" class="btn" onclick="completeOrder()" style="background: #4caf50; font-size: 1.1rem; padding: 1rem 2rem;">
                         ✅ Bestellung jetzt abschließen
                     </button>
-                    <button type="button" class="btn" onclick="cancelOrder()" style="background: #f44336; margin-top: 0.5rem;">
+                    <button type="button" class="btn" onclick="cancelOrderFromCart()" style="background: #f44336; margin-top: 0.5rem;">
                         ❌ Abbrechen
                     </button>
                 </div>
@@ -2077,7 +2077,7 @@
                                     <td>
                                         <button class="action-btn view" onclick="viewOrderDetails('${order.orderId}')" title="Details anzeigen">👁️ Details</button>
                                         ${order.status !== 'cancelled' && order.status !== 'completed' ? 
-                                            `<button class="action-btn delete" onclick="cancelOrder('${order.orderId}')" title="Bestellung stornieren">❌ Stornieren</button>` : 
+                                            `<button class="action-btn delete" onclick="cancelOrderMaster('${order.orderId}')" title="Bestellung stornieren">❌ Stornieren</button>` : 
                                             ''}
                                     </td>
                                 </tr>
@@ -2768,8 +2768,8 @@ ${order.shippingAddress.country}`;
             loadMasterCustomers();
         }
 
-        // Order Management Functions
-        function cancelOrder(orderId) {
+        // Order Management Functions - Fixed naming conflict
+        function cancelOrderMaster(orderId) {
             const orderIndex = orders.findIndex(o => o.orderId === orderId);
             if (orderIndex === -1) {
                 showNotification('❌ Bestellung nicht gefunden.');
@@ -2791,6 +2791,9 @@ ${order.shippingAddress.country}`;
             const reason = prompt('📝 Grund für die Stornierung:', 'Storniert durch Mitarbeiter');
             if (!reason) return;
 
+            const customerMessage = prompt('📧 Nachricht an den Kunden (optional):', 
+                `Sehr geehrte/r ${order.customerName},\n\nIhre Bestellung #${orderId} wurde storniert.\n\nGrund: ${reason}\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\nIhr KlarKRAFT Team`);
+
             if (!confirm(`❌ Möchten Sie Bestellung #${orderId} wirklich stornieren?\n\nKunde: ${order.customerName}\nBetrag: €${order.total.toFixed(2)}\nGrund: ${reason}`)) {
                 return;
             }
@@ -2800,6 +2803,7 @@ ${order.shippingAddress.country}`;
             orders[orderIndex].cancelledBy = currentMaster.name;
             orders[orderIndex].cancelledAt = new Date().toISOString();
             orders[orderIndex].cancelReason = reason;
+            orders[orderIndex].customerNotified = !!customerMessage;
             
             localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
 
@@ -2812,11 +2816,21 @@ ${order.shippingAddress.country}`;
                 localStorage.setItem('klarkraft_users', JSON.stringify(users));
             }
 
+			// Send customer notification if message provided
+            if (customerMessage) {
+                const subject = `Ihre Bestellung #${orderId} wurde storniert`;
+                const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(customerMessage)}`;
+                window.open(mailtoLink);
+                logActivity('Customer Notified', `Cancellation notification sent to ${order.customerEmail} for order ${orderId}`);
+            }
+			
             logActivity('Order Cancelled', `Order ${orderId} cancelled by ${currentMaster.name}. Reason: ${reason}`);
-            showNotification(`✅ Bestellung #${orderId} wurde storniert.`);
+            showNotification(`✅ Bestellung #${orderId} wurde storniert. ${customerMessage ? 'Kunde wurde benachrichtigt.' : ''}`);
             
-            // Reload orders list
-            loadMasterOrders();
+            // Reload orders list if in master dashboard
+            if (document.getElementById('masterOrders').classList.contains('active')) {
+                loadMasterOrders();
+            }
         }
 
         // Product Functions
@@ -3020,7 +3034,7 @@ ${order.shippingAddress.country}`;
         }
 
         function cancelOrderFromModal(orderId) {
-            cancelOrder(orderId);
+            cancelOrderMaster(orderId);
             setTimeout(() => {
                 updateOrdersCounter();
                 showNewOrders(); // Refresh the view
@@ -3298,7 +3312,7 @@ ${order.shippingAddress.country}`;
             document.getElementById('orderConfirmation').style.display = 'block';
         }
 
-        function cancelOrder() {
+        function cancelOrderFromCart() {
             closeModal();
         }
 
