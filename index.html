@@ -2005,7 +2005,7 @@
                                     <td>${new Date(user.registrationDate || Date.now()).toLocaleDateString('de-DE')}</td>
                                     <td>
                                         <button class="action-btn view" onclick="sendEmailToCustomer('${user.customerId}')" title="E-Mail senden">📧 E-Mail</button>
-                                        <button class="action-btn delete" onclick="cancelOrderWithReason(order.id, currentMaster ? 'master' : 'new')" onclick="deleteCustomerAccount('${user.customerId}')" title="Konto löschen">🗑️ Löschen</button>
+                                        <button class="action-btn delete" onclick="deleteCustomerAccount('${user.customerId}')" title="Konto löschen">🗑️ Löschen</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -2077,7 +2077,7 @@
                                     <td>
                                         <button class="action-btn view" onclick="viewOrderDetails('${order.orderId}')" title="Details anzeigen">👁️ Details</button>
                                         ${order.status !== 'cancelled' && order.status !== 'completed' ? 
-                                            `<button class="action-btn delete" onclick="cancelOrderWithReason(order.id, currentMaster ? 'master' : 'new')" onclick="cancelOrder('${order.orderId}')" title="Bestellung stornieren">❌ Stornieren</button>` : 
+                                            `<button class="action-btn delete" onclick="cancelOrder('${order.orderId}')" title="Bestellung stornieren">❌ Stornieren</button>` : 
                                             ''}
                                     </td>
                                 </tr>
@@ -2972,19 +2972,51 @@ ${order.shippingAddress.country}`;
                 return;
             }
 
-            if (confirm(`✅ Bestellung #${orderId} als "in Bearbeitung" markieren und dem aktuellen Mitarbeiter zuweisen?`)) {
-                orders[orderIndex].processedBy = currentMaster.name;
-                orders[orderIndex].processedAt = new Date().toISOString();
-                orders[orderIndex].status = 'pending'; // Keep as pending but mark as processed
-                
-                localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-                
-                logActivity('Process Order', `Order ${orderId} assigned to ${currentMaster.name}`);
-                showNotification(`✅ Bestellung #${orderId} wurde Ihnen zugewiesen.`);
-                
-                updateOrdersCounter();
-                showNewOrders(); // Refresh the view
+            const order = orders[orderIndex];
+            
+            // Show processing dialog
+            const action = prompt(`📋 Bestellung #${orderId} bearbeiten\n\nWas möchten Sie tun?\n1 = Mir zuweisen\n2 = Status auf "Wird versendet" setzen\n3 = Als "Geliefert" markieren\n4 = Abbrechen`, '1');
+            
+            if (!action) return;
+            
+            switch(action) {
+                case '1':
+                    // Assign to current master
+                    orders[orderIndex].processedBy = currentMaster.name;
+                    orders[orderIndex].processedAt = new Date().toISOString();
+                    orders[orderIndex].status = 'processing';
+                    
+                    logActivity('Process Order', `Order ${orderId} assigned to ${currentMaster.name}`);
+                    showNotification(`✅ Bestellung #${orderId} wurde Ihnen zugewiesen und wird bearbeitet.`);
+                    break;
+                    
+                case '2':
+                    // Mark as shipping
+                    orders[orderIndex].status = 'processing';
+                    orders[orderIndex].shippingStartedBy = currentMaster.name;
+                    orders[orderIndex].shippingStartedAt = new Date().toISOString();
+                    
+                    logActivity('Ship Order', `Order ${orderId} marked for shipping by ${currentMaster.name}`);
+                    showNotification(`📦 Bestellung #${orderId} wird versendet.`);
+                    break;
+                    
+                case '3':
+                    // Mark as delivered
+                    orders[orderIndex].status = 'completed';
+                    orders[orderIndex].completedBy = currentMaster.name;
+                    orders[orderIndex].completedAt = new Date().toISOString();
+                    
+                    logActivity('Complete Order', `Order ${orderId} marked as delivered by ${currentMaster.name}`);
+                    showNotification(`✅ Bestellung #${orderId} wurde als geliefert markiert.`);
+                    break;
+                    
+                default:
+                    return;
             }
+            
+            localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+            updateOrdersCounter();
+            showNewOrders(); // Refresh the view
         }
 
         function quickUpdateOrderStatus(orderId, newStatus) {
@@ -4042,83 +4074,6 @@ ${order.shippingAddress.country}`;
             console.log('✅ DOM bereits geladen, initialisiere...');
             init();
         }
-    
-
-
-function cancelOrderWithReason(orderId, context = 'new') {
-    const reason = prompt("Warum soll diese Bestellung storniert werden?");
-    if (!reason) return;
-
-    const orderIndex = orders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return;
-
-    orders[orderIndex].status = 'cancelled';
-    orders[orderIndex].cancelReason = reason;
-
-    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-    showNotification('🚫 Bestellung wurde storniert');
-
-    if (context === 'new') showNewOrders();
-    if (context === 'master') showMasterOrders();
-}
-
-function assignOrderToCurrentMaster(orderId) {
-    if (!currentMaster) {
-        showNotification('⚠️ Kein Mitarbeiter angemeldet!');
-        return;
-    }
-
-    const orderIndex = orders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return;
-
-    orders[orderIndex].status = 'processing';
-    orders[orderIndex].assignedTo = currentMaster.name;
-
-    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-    showNotification(`🛠️ Bestellung wird nun bearbeitet von ${currentMaster.name}`);
-    showNewOrders();
-}
-
-
-
-
-
-function cancelOrderWithReason(orderId, context = 'new') {
-    const reason = prompt("Please enter the reason for cancellation:");
-    if (!reason) return;
-
-    const orderIndex = orders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return;
-
-    orders[orderIndex].status = 'cancelled';
-    orders[orderIndex].cancelReason = reason;
-
-    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-    showNotification('🚫 Order has been cancelled');
-
-    if (context === 'new') showNewOrders();
-    if (context === 'master') showMasterOrders();
-}
-
-function assignOrderToCurrentMaster(orderId) {
-    if (!currentMaster) {
-        showNotification('⚠️ No employee logged in!');
-        return;
-    }
-
-    const orderIndex = orders.findIndex(o => o.id === orderId);
-    if (orderIndex === -1) return;
-
-    orders[orderIndex].status = 'processing';
-    orders[orderIndex].assignedTo = currentMaster.name;
-
-    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-    showNotification(`🛠️ Order is now assigned to ${currentMaster.name}`);
-
-    showNewOrders();
-}
-
-
-</script>
+    </script>
 </body>
 </html>
