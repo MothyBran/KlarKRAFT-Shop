@@ -2905,6 +2905,11 @@ ${order.shippingAddress.country}`;
 		  const orders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
 		  const newOrders = orders.filter(o => o.status === 'pending');
 		  const ordersList = document.getElementById('newOrdersList');
+		  const modal = document.getElementById('newOrdersModal');
+
+		  if (modal) modal.style.display = 'block';
+
+		  if (!ordersList) return;
 
 		  if (newOrders.length === 0) {
 			ordersList.innerHTML = '<p style="color: #8d6e63;">Keine neuen Bestellungen.</p>';
