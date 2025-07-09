@@ -4043,5 +4043,60 @@ ${order.shippingAddress.country}`;
             init();
         }
     </script>
+
+<!-- 🛠 Erweiterte Bestellfunktionen -->
+<div id="orderDetailModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="document.getElementById('orderDetailModal').style.display='none'">&times;</span>
+    <div id="orderDetailsContent"></div>
+  </div>
+</div>
+
+<script>
+function showOrderDetails(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const html = \`
+        <h3>🧾 Bestellung \${order.id}</h3>
+        <p><strong>Kunde:</strong> \${order.customerName}</p>
+        <p><strong>Adresse:</strong> \${order.address}</p>
+        <p><strong>Status:</strong> \${order.status}</p>
+        <p><strong>Gesamt:</strong> €\${order.total?.toFixed(2) || 0}</p>
+        <hr>
+        <h4>📦 Artikel:</h4>
+        <ul>\${order.items?.map(item => \`<li>\${item.name} × \${item.quantity}</li>\`).join('') || ''}</ul>
+    \`;
+
+    document.getElementById("orderDetailsContent").innerHTML = html;
+    document.getElementById("orderDetailModal").style.display = "block";
+}
+
+function markOrderAsShipped(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+        order.status = 'completed';
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        showNotification(`✅ Bestellung \${orderId} wurde als 'Geliefert' markiert.`);
+        renderNewOrders?.(); renderMasterOrders?.();
+    }
+}
+
+function cancelOrderByMaster(orderId) {
+    if (!confirm('❌ Möchten Sie die Bestellung wirklich stornieren?')) return;
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+        order.status = 'cancelled';
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        showNotification(`🚫 Bestellung \${orderId} wurde storniert.`);
+        renderNewOrders?.(); renderMasterOrders?.();
+    }
+}
+
+function editOrder(orderId) {
+    alert('✏️ Bearbeiten-Funktion für Bestellung ' + orderId + ' folgt in Kürze...');
+}
+</script>
+
 </body>
 </html>
