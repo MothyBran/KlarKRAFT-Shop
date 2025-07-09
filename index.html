@@ -4042,36 +4042,6 @@ ${order.shippingAddress.country}`;
             console.log('✅ DOM bereits geladen, initialisiere...');
             init();
         }
-    
-
-function assignOrderToCurrentMaster(orderId) {
-  const orderIndex = orders.findIndex(o => o.id === orderId);
-  if (orderIndex === -1) return;
-
-  orders[orderIndex].assignedTo = currentUser;
-  orders[orderIndex].status = "in Bearbeitung";
-  saveOrders();
-  showNewOrders();
-}
-
-function cancelOrderWithReason(orderId, context = 'new') {
-  const orderIndex = orders.findIndex(o => o.id === orderId);
-  if (orderIndex === -1) return;
-
-  const reason = prompt("Gib bitte den Grund für die Stornierung ein:");
-  if (!reason) return;
-
-  orders[orderIndex].status = "cancelled";
-  orders[orderIndex].cancellationReason = reason;
-  saveOrders();
-
-  if (context === 'new') {
-    showNewOrders();
-  } else if (context === 'master') {
-    showMasterOrders();
-  }
-}
-
-</script>
+    </script>
 </body>
 </html>
