@@ -2791,6 +2791,9 @@ ${order.shippingAddress.country}`;
             const reason = prompt('📝 Grund für die Stornierung:', 'Storniert durch Mitarbeiter');
             if (!reason) return;
 
+            const customerMessage = prompt('📧 Nachricht an den Kunden (optional):', 
+                `Sehr geehrte/r ${order.customerName},\n\nIhre Bestellung #${orderId} wurde storniert.\n\nGrund: ${reason}\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\nIhr KlarKRAFT Team`);
+
             if (!confirm(`❌ Möchten Sie Bestellung #${orderId} wirklich stornieren?\n\nKunde: ${order.customerName}\nBetrag: €${order.total.toFixed(2)}\nGrund: ${reason}`)) {
                 return;
             }
@@ -2800,6 +2803,7 @@ ${order.shippingAddress.country}`;
             orders[orderIndex].cancelledBy = currentMaster.name;
             orders[orderIndex].cancelledAt = new Date().toISOString();
             orders[orderIndex].cancelReason = reason;
+            orders[orderIndex].customerNotified = !!customerMessage;
             
             localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
 
@@ -2812,11 +2816,21 @@ ${order.shippingAddress.country}`;
                 localStorage.setItem('klarkraft_users', JSON.stringify(users));
             }
 
+			// Send customer notification if message provided
+            if (customerMessage) {
+                const subject = `Ihre Bestellung #${orderId} wurde storniert`;
+                const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(customerMessage)}`;
+                window.open(mailtoLink);
+                logActivity('Customer Notified', `Cancellation notification sent to ${order.customerEmail} for order ${orderId}`);
+            }
+			
             logActivity('Order Cancelled', `Order ${orderId} cancelled by ${currentMaster.name}. Reason: ${reason}`);
-            showNotification(`✅ Bestellung #${orderId} wurde storniert.`);
+            showNotification(`✅ Bestellung #${orderId} wurde storniert. ${customerMessage ? 'Kunde wurde benachrichtigt.' : ''}`);
             
-            // Reload orders list
-            loadMasterOrders();
+            // Reload orders list if in master dashboard
+            if (document.getElementById('masterOrders').classList.contains('active')) {
+                loadMasterOrders();
+            }
         }
 
         // Product Functions
@@ -2972,51 +2986,19 @@ ${order.shippingAddress.country}`;
                 return;
             }
 
-            const order = orders[orderIndex];
-            
-            // Show processing dialog
-            const action = prompt(`📋 Bestellung #${orderId} bearbeiten\n\nWas möchten Sie tun?\n1 = Mir zuweisen\n2 = Status auf "Wird versendet" setzen\n3 = Als "Geliefert" markieren\n4 = Abbrechen`, '1');
-            
-            if (!action) return;
-            
-            switch(action) {
-                case '1':
-                    // Assign to current master
-                    orders[orderIndex].processedBy = currentMaster.name;
-                    orders[orderIndex].processedAt = new Date().toISOString();
-                    orders[orderIndex].status = 'processing';
-                    
-                    logActivity('Process Order', `Order ${orderId} assigned to ${currentMaster.name}`);
-                    showNotification(`✅ Bestellung #${orderId} wurde Ihnen zugewiesen und wird bearbeitet.`);
-                    break;
-                    
-                case '2':
-                    // Mark as shipping
-                    orders[orderIndex].status = 'processing';
-                    orders[orderIndex].shippingStartedBy = currentMaster.name;
-                    orders[orderIndex].shippingStartedAt = new Date().toISOString();
-                    
-                    logActivity('Ship Order', `Order ${orderId} marked for shipping by ${currentMaster.name}`);
-                    showNotification(`📦 Bestellung #${orderId} wird versendet.`);
-                    break;
-                    
-                case '3':
-                    // Mark as delivered
-                    orders[orderIndex].status = 'completed';
-                    orders[orderIndex].completedBy = currentMaster.name;
-                    orders[orderIndex].completedAt = new Date().toISOString();
-                    
-                    logActivity('Complete Order', `Order ${orderId} marked as delivered by ${currentMaster.name}`);
-                    showNotification(`✅ Bestellung #${orderId} wurde als geliefert markiert.`);
-                    break;
-                    
-                default:
-                    return;
+            if (confirm(`✅ Bestellung #${orderId} als "in Bearbeitung" markieren und dem aktuellen Mitarbeiter zuweisen?`)) {
+                orders[orderIndex].processedBy = currentMaster.name;
+                orders[orderIndex].processedAt = new Date().toISOString();
+                orders[orderIndex].status = 'pending'; // Keep as pending but mark as processed
+                
+                localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+                
+                logActivity('Process Order', `Order ${orderId} assigned to ${currentMaster.name}`);
+                showNotification(`✅ Bestellung #${orderId} wurde Ihnen zugewiesen.`);
+                
+                updateOrdersCounter();
+                showNewOrders(); // Refresh the view
             }
-            
-            localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-            updateOrdersCounter();
-            showNewOrders(); // Refresh the view
         }
 
         function quickUpdateOrderStatus(orderId, newStatus) {
