@@ -1,0 +1,248 @@
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Anmelden</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">Registrieren</button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <h2>Anmelden</h2>
+                <button class="google-btn" onclick="googleAuth()">📧 Mit Google anmelden</button>
+                <div class="divider"><span>oder</span></div>
+                <form id="customerLoginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">E-Mail:</label>
+                        <input type="email" id="loginEmail" name="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Passwort:</label>
+                        <input type="password" id="loginPassword" name="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn">Anmelden</button>
+                    <button type="button" class="btn" onclick="quickLogin()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Login (Max Mustermann)</button>
+                </form>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <h2>Registrieren</h2>
+                <button class="google-btn" onclick="googleAuth()">📧 Mit Google registrieren</button>
+                <div class="divider"><span>oder</span></div>
+                <form id="customerRegisterForm">
+                    <div class="form-group">
+                        <label for="registerName">Name:</label>
+                        <input type="text" id="registerName" name="registerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">E-Mail:</label>
+                        <input type="email" id="registerEmail" name="registerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Passwort:</label>
+                        <input type="password" id="registerPassword" name="registerPassword" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerAddress">Adresse:</label>
+                        <input type="text" id="registerAddress" name="registerAddress" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerCity">Stadt:</label>
+                        <input type="text" id="registerCity" name="registerCity" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerZip">PLZ:</label>
+                        <input type="text" id="registerZip" name="registerZip" required>
+                    </div>
+                    <button type="submit" class="btn">Registrieren</button>
+                    <button type="button" class="btn" onclick="quickRegister()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Registrierung</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Payment Method Modal -->
+    <div id="addPaymentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Neue Zahlungsmethode hinzufügen</h2>
+            
+            <div class="payment-methods">
+                <button class="payment-btn" onclick="selectNewPaymentMethod('paypal')" id="newPaypalBtn">💳 PayPal</button>
+                <button class="payment-btn" onclick="selectNewPaymentMethod('sepa')" id="newSepaBtn">🏦 Lastschrift</button>
+                <button class="payment-btn" onclick="selectNewPaymentMethod('card')" id="newCardBtn">💳 Kreditkarte</button>
+            </div>
+            
+            <div id="newPaymentForms"></div>
+        </div>
+    </div>
+
+    <!-- Legal Modal -->
+    <div id="legalModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="legalContent"></div>
+        </div>
+    </div>
+
+    <!-- Master Login Modal -->
+    <div id="masterLoginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 style="color: #ff6b35; margin-bottom: 2rem;">🔐 KlarKRAFT Mitarbeiter Login</h2>
+            <form id="masterLoginForm" onsubmit="handleMasterLogin(event)">
+                <div class="form-group">
+                    <label for="masterLoginEmail">Mitarbeiter E-Mail:</label>
+                    <input type="email" id="masterLoginEmail" name="masterLoginEmail" required placeholder="mitarbeiter@klarkraft.de">
+                </div>
+                <div class="form-group">
+                    <label for="masterLoginPassword">Passwort:</label>
+                    <input type="password" id="masterLoginPassword" name="masterLoginPassword" required placeholder="Ihr Mitarbeiter-Passwort">
+                </div>
+                <div class="form-group">
+                    <label for="masterLoginCode">Sicherheitscode:</label>
+                    <input type="text" id="masterLoginCode" name="masterLoginCode" required placeholder="KK-XXXX" maxlength="7">
+                </div>
+                <button type="submit" class="btn">🚀 Anmelden</button>
+            </form>
+            
+            <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; font-size: 0.9rem;">
+                <h4 style="color: #ff6b35; margin-bottom: 0.5rem;">Demo-Zugangsdaten:</h4>
+                <div style="display: grid; gap: 0.5rem;">
+                    <button type="button" class="btn" onclick="quickMasterLogin('manager')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        👔 Manager: manager@klarkraft.de / manager123 / KK-2025
+                    </button>
+                    <button type="button" class="btn" onclick="quickMasterLogin('support')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        🎧 Support: support@klarkraft.de / support123 / KK-2025
+                    </button>
+                    <button type="button" class="btn" onclick="quickMasterLogin('admin')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        ⚙️ Admin: admin@klarkraft.de / admin123 / KK-2025
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Orders Modal (for Masters) -->
+    <div id="newOrdersModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>📦 Neue Bestellungen</h2>
+            <div id="newOrdersList"></div>
+        </div>
+    </div>
+    <div id="masterDashboardModal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh;">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="masterDashboardContent">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #d7ccc8;">
+                    <div>
+                        <h2 style="color: #ff6b35; margin-bottom: 0.5rem;">🏢 KlarKRAFT Master Dashboard</h2>
+                        <p style="color: #8d6e63;">Mitarbeiter: <span id="currentMasterName" style="font-weight: bold; color: #ff6b35;"></span> (<span id="currentMasterRole" style="color: #8d6e63;"></span>)</p>
+                    </div>
+                    <div style="text-align: right; font-size: 0.9rem; color: #8d6e63;">
+                        <div>Letzter Login: <span id="lastLoginTime"></span></div>
+                        <div>Session: <span id="sessionId" style="font-family: monospace;"></span></div>
+                    </div>
+                </div>
+
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchMasterTab('overview')">📊 Übersicht</button>
+                    <button class="auth-tab" onclick="switchMasterTab('customers')">👥 Kunden</button>
+                    <button class="auth-tab" onclick="switchMasterTab('orders')">📦 Bestellungen</button>
+                    <button class="auth-tab" onclick="switchMasterTab('analytics')">📈 Analytik</button>
+                    <button class="auth-tab" onclick="switchMasterTab('settings')" id="settingsTab">⚙️ Einstellungen</button>
+                </div>
+                
+                <!-- Overview Tab -->
+                <div id="masterOverview" class="auth-form active">
+                    <div id="dashboardStats"></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+                        <div>
+                            <h3 style="color: #ff6b35; margin-bottom: 1rem;">📈 Neueste Bestellungen</h3>
+                            <div id="recentOrders"></div>
+                        </div>
+                        <div>
+                            <h3 style="color: #ff6b35; margin-bottom: 1rem;">👤 Neue Kunden</h3>
+                            <div id="recentCustomers"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Customers Tab -->
+                <div id="masterCustomers" class="auth-form">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: #ff6b35;">👥 Kundenverwaltung</h3>
+                        <div>
+                            <input type="text" id="customerSearch" placeholder="Kunde suchen..." style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
+                            <button class="btn" onclick="exportCustomersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
+                        </div>
+                    </div>
+                    <div id="masterCustomersList"></div>
+                </div>
+                
+                <!-- Orders Tab -->
+                <div id="masterOrders" class="auth-form">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: #ff6b35;">📦 Bestellverwaltung</h3>
+                        <div>
+                            <select id="orderStatusFilter" style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
+                                <option value="">Alle Status</option>
+                                <option value="pending">In Bearbeitung</option>
+                                <option value="processing">Wird versendet</option>
+                                <option value="completed">Geliefert</option>
+                                <option value="cancelled">Storniert</option>
+                            </select>
+                            <button class="btn" onclick="exportOrdersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
+                        </div>
+                    </div>
+                    <div id="masterOrdersList"></div>
+                </div>
+                
+                <!-- Analytics Tab -->
+                <div id="masterAnalytics" class="auth-form">
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem;">📈 Verkaufsanalytik</h3>
+                    <div id="analyticsContent"></div>
+                </div>
+                
+                <!-- Settings Tab -->
+                <div id="masterSettings" class="auth-form">
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem;">⚙️ System-Einstellungen</h3>
+                    <div id="settingsContent">
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🎮 Demo-Modus</h4>
+                            <div class="setting-item">
+                                <div class="setting-description">
+                                    <div class="setting-title">Automatische Bestellabwicklung</div>
+                                    <div class="setting-subtitle">
+                                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist. Bei "Aus" werden niemals automatische Updates durchgeführt.
+                                    </div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
+                        </div>
+                        
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🧹 Datenbereinigung</h4>
+                            <button class="btn" onclick="clearTestData()" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 1rem;">Test-Daten löschen</button>
+                            <button class="btn" onclick="resetAllData()" style="background: #ff5722; width: auto; padding: 0.5rem 1rem;">Alle Daten zurücksetzen</button>
+                        </div>
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">📊 Datenexport</h4>
+                            <button class="btn" onclick="exportAllData()" style="width: auto; padding: 0.5rem 1rem;">Vollständiger Export</button>
+                        </div>
+                        <div>
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">👥 Mitarbeiter-Logs</h4>
+                            <div id="activityLogs"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
