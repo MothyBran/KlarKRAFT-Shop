@@ -604,6 +604,54 @@
             alert('Ihr Browser unterstützt keine ES6 Module. Bitte verwenden Sie einen modernen Browser wie Chrome, Firefox, Safari oder Edge.');
         });
     </script>
+const additionalCSS = `
+<style>
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.modal {
+    transition: opacity 0.3s ease;
+}
+
+.modal.modal-open {
+    opacity: 1;
+}
+
+/* Accessibility improvements */
+.modal:focus-within {
+    outline: none;
+}
+
+.btn:focus,
+.nav-btn:focus,
+input:focus,
+select:focus {
+    outline: 2px solid #ff6b35;
+    outline-offset: 2px;
+}
+
+/* Mobile improvements */
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 10px;
+        padding: 1rem;
+        max-width: calc(100% - 20px);
+    }
+}
+</style>
+`;
     
     <!-- Fallback für ältere Browser -->
     <script nomodule>
