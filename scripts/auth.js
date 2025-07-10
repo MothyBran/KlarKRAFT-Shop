@@ -273,6 +273,281 @@ export class AuthManager {
         }
     }
 
+    // Ergänzungen für scripts/auth.js - Diese Methoden zu der bestehenden AuthManager Klasse hinzufügen:
+
+    /**
+     * Auth Modal anzeigen
+     */
+    showAuth() {
+        UIUtils.showModal('authModal');
+    }
+    
+    /**
+     * Profil anzeigen
+     */
+    showProfile() {
+        if (!this.currentUser) {
+            UIUtils.showNotification('⚠️ Sie müssen angemeldet sein!', 'warning');
+            this.showAuth();
+            return;
+        }
+        
+        // Profil-Daten laden
+        this.loadProfileData();
+        
+        // Profile page anzeigen
+        const mainContent = document.getElementById('mainContent');
+        const profilePage = document.getElementById('profilePage');
+        
+        if (mainContent) mainContent.classList.add('hidden');
+        if (profilePage) profilePage.classList.add('active');
+        
+        UIUtils.hideModal();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    /**
+     * Profil-Daten in Formulare laden
+     */
+    loadProfileData() {
+        if (!this.currentUser) return;
+        
+        // Personal data
+        const fields = [
+            'profileName', 'profileEmail', 'profilePhone',
+            'shippingAddress', 'shippingCity', 'shippingZip', 'shippingCountry'
+        ];
+        
+        fields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                const key = fieldId.replace('profile', '').replace('shipping', '').toLowerCase();
+                if (key === 'name') element.value = this.currentUser.name || '';
+                else if (key === 'email') element.value = this.currentUser.email || '';
+                else if (key === 'phone') element.value = this.currentUser.phone || '';
+                else if (key === 'address') element.value = this.currentUser.address || '';
+                else if (key === 'city') element.value = this.currentUser.city || '';
+                else if (key === 'zip') element.value = this.currentUser.zip || '';
+                else if (key === 'country') element.value = this.currentUser.country || 'Deutschland';
+            }
+        });
+        
+        // Load payment methods
+        this.loadPaymentMethods();
+        
+        // Load order history
+        this.loadOrderHistory();
+    }
+    
+    /**
+     * Zahlungsmethoden laden
+     */
+    loadPaymentMethods() {
+        const container = document.getElementById('paymentMethodsList');
+        if (!container || !this.currentUser) return;
+        
+        const methods = this.currentUser.paymentMethods || [];
+        
+        if (methods.length === 0) {
+            container.innerHTML = '<p style="color: #8d6e63;">Keine Zahlungsmethoden gespeichert.</p>';
+            return;
+        }
+        
+        container.innerHTML = methods.map((method, index) => `
+            <div class="payment-method-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${BusinessUtils.getPaymentMethodIcon(method.type)} ${BusinessUtils.getPaymentMethodName(method.type)}</strong><br>
+                        <small>${BusinessUtils.getPaymentMethodDetails(method)}</small>
+                    </div>
+                    <button class="btn" onclick="removePaymentMethod(${index})" style="background: #f44336; width: auto; padding: 0.5rem;">
+                        🗑️ Entfernen
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // Global function for removing payment methods
+        window.removePaymentMethod = (index) => {
+            if (confirm('Möchten Sie diese Zahlungsmethode wirklich entfernen?')) {
+                this.currentUser.paymentMethods.splice(index, 1);
+                UserStorage.updateUser(this.currentUser);
+                UserStorage.setCurrentUser(this.currentUser);
+                this.loadPaymentMethods();
+                UIUtils.showNotification('✅ Zahlungsmethode entfernt!', 'success');
+            }
+        };
+    }
+    
+    /**
+     * Bestellhistorie laden
+     */
+    loadOrderHistory() {
+        const container = document.getElementById('orderHistoryList');
+        if (!container || !this.currentUser) return;
+        
+        const orders = OrderStorage.getOrdersByCustomer(this.currentUser.customerId);
+        
+        if (orders.length === 0) {
+            container.innerHTML = '<p style="color: #8d6e63;">Noch keine Bestellungen.</p>';
+            return;
+        }
+        
+        const sortedOrders = orders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+        
+        container.innerHTML = sortedOrders.map(order => `
+            <div class="order-item" style="border-left: 4px solid ${this.getOrderStatusColor(order.status)};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <strong>Bestellung #${order.orderId}</strong>
+                    <span class="order-status status-${order.status}">${BusinessUtils.getStatusText(order.status)}</span>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Datum:</strong> ${Formatter.formatDate(order.orderDate)}<br>
+                    <strong>Artikel:</strong> ${order.items.length} Produkt(e)<br>
+                    <strong>Gesamt:</strong> ${Formatter.formatPrice(order.total)}
+                </div>
+                <div style="font-size: 0.9rem; color: #8d6e63;">
+                    ${order.items.map(item => `${item.name} (${item.quantity}x)`).join(', ')}
+                </div>
+                ${order.trackingNumber ? `
+                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                        <strong>Tracking:</strong> ${order.trackingNumber}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+    
+    /**
+     * Order Status Farbe ermitteln
+     */
+    getOrderStatusColor(status) {
+        const colors = {
+            'pending': '#f44336',
+            'processing': '#ff9800',
+            'completed': '#4caf50',
+            'cancelled': '#9e9e9e'
+        };
+        return colors[status] || '#8d6e63';
+    }
+    
+    /**
+     * Persönliche Daten aktualisieren
+     */
+    updatePersonalData(event) {
+        event.preventDefault();
+        
+        if (!this.currentUser) {
+            UIUtils.showNotification('⚠️ Sie müssen angemeldet sein!', 'warning');
+            return;
+        }
+        
+        try {
+            const name = document.getElementById('profileName').value.trim();
+            const email = document.getElementById('profileEmail').value.trim();
+            const phone = document.getElementById('profilePhone').value.trim();
+            
+            if (!name || !email) {
+                UIUtils.showNotification('⚠️ Name und E-Mail sind erforderlich!', 'warning');
+                return;
+            }
+            
+            if (!Validator.isValidEmail(email)) {
+                UIUtils.showNotification('⚠️ Bitte geben Sie eine gültige E-Mail-Adresse ein!', 'warning');
+                return;
+            }
+            
+            // Check if email is already taken by another user
+            const existingUser = UserStorage.findUserByEmail(email);
+            if (existingUser && existingUser.customerId !== this.currentUser.customerId) {
+                UIUtils.showNotification('❌ Diese E-Mail-Adresse ist bereits vergeben!', 'error');
+                return;
+            }
+            
+            // Update user data
+            this.currentUser.name = name;
+            this.currentUser.email = email;
+            this.currentUser.phone = phone;
+            
+            UserStorage.updateUser(this.currentUser);
+            UserStorage.setCurrentUser(this.currentUser);
+            
+            ActivityStorage.addLog('Profile Update', 'Personal data updated', this.currentUser);
+            UIUtils.showNotification('✅ Persönliche Daten erfolgreich aktualisiert!', 'success');
+            
+            // Update UI
+            this.updateUI();
+            
+        } catch (error) {
+            ErrorHandler.handleAsyncError(error, 'AuthManager.updatePersonalData');
+        }
+    }
+    
+    /**
+     * Lieferadresse aktualisieren
+     */
+    updateShippingAddress(event) {
+        event.preventDefault();
+        
+        if (!this.currentUser) {
+            UIUtils.showNotification('⚠️ Sie müssen angemeldet sein!', 'warning');
+            return;
+        }
+        
+        try {
+            const address = document.getElementById('shippingAddress').value.trim();
+            const city = document.getElementById('shippingCity').value.trim();
+            const zip = document.getElementById('shippingZip').value.trim();
+            const country = document.getElementById('shippingCountry').value;
+            
+            if (!address || !city || !zip) {
+                UIUtils.showNotification('⚠️ Alle Adressfelder sind erforderlich!', 'warning');
+                return;
+            }
+            
+            // Update address
+            this.currentUser.address = address;
+            this.currentUser.city = city;
+            this.currentUser.zip = zip;
+            this.currentUser.country = country;
+            
+            UserStorage.updateUser(this.currentUser);
+            UserStorage.setCurrentUser(this.currentUser);
+            
+            ActivityStorage.addLog('Address Update', 'Shipping address updated', this.currentUser);
+            UIUtils.showNotification('✅ Lieferadresse erfolgreich aktualisiert!', 'success');
+            
+        } catch (error) {
+            ErrorHandler.handleAsyncError(error, 'AuthManager.updateShippingAddress');
+        }
+    }
+    
+    /**
+     * Session wiederherstellen
+     */
+    restoreSession() {
+        try {
+            const savedUser = UserStorage.getCurrentUser();
+            if (savedUser) {
+                // Validate and update user data if needed
+                const currentUserInDB = UserStorage.findUserById(savedUser.customerId);
+                if (currentUserInDB) {
+                    this.currentUser = currentUserInDB;
+                    console.log('✅ Benutzer-Session wiederhergestellt:', this.currentUser.name);
+                    return true;
+                } else {
+                    UserStorage.removeCurrentUser();
+                }
+            }
+            return false;
+    
+        } catch (error) {
+            console.error('❌ Fehler beim Wiederherstellen der Session:', error);
+            UserStorage.removeCurrentUser();
+            return false;
+        }
+    }
+    
     /**
      * Passwort ändern
      */
