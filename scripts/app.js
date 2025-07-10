@@ -1207,4 +1207,32 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 // App global verfügbar machen für Debugging
 window.KlarKraftApp = app;
 
+// === MODAL ERWEITERTE FUNKTIONEN ===
+window.closeModal = () => {
+    UIUtils.hideModal();
+};
+
+window.showModal = (modalId) => {
+    UIUtils.showModal(modalId);
+};
+
+// Auth Tab Switching
+window.switchAuthTab = (tab) => {
+    // Remove active from all tabs and forms
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    
+    // Add active to selected tab and form
+    const tabButtons = document.querySelectorAll('.auth-tab');
+    const forms = document.querySelectorAll('.auth-form');
+    
+    if (tab === 'login') {
+        if (tabButtons[0]) tabButtons[0].classList.add('active');
+        if (forms[0]) forms[0].classList.add('active');
+    } else if (tab === 'register') {
+        if (tabButtons[1]) tabButtons[1].classList.add('active');
+        if (forms[1]) forms[1].classList.add('active');
+    }
+};
+
 export default app;
