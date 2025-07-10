@@ -508,10 +508,24 @@
         </div>
     </div>
 
-        <!-- Initialize application -->
+    <!-- ========== SCRIPTS ========== -->
+    
+    <!-- Core scripts in dependency order -->
+    <script src="scripts/config.js"></script>
+    <script src="scripts/utils.js"></script>
+    <script src="scripts/storage.js"></script>
+    
+    <!-- Business logic modules -->
+    <script src="scripts/products.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/cart.js"></script>
+    <script src="scripts/master.js"></script>
+    
+    <!-- Main application controller -->
+    <script src="scripts/app.js"></script>
+    
+    <!-- Initialize application -->
     <script>
-        src="scripts/app.js">
-        
         // Initialize app when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 KlarKRAFT Shop wird initialisiert...');
