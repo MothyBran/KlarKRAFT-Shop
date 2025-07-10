@@ -1,1 +1,29 @@
-
+<header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo" onclick="showProducts()">KlarKRAFT</div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="showProducts()">Produkte</button>
+                    <button class="nav-btn" onclick="showAuth()" id="authBtn">Anmelden</button>
+                    <div class="user-info" id="userInfo">
+                        <span id="userName">Benutzer</span>
+                        <button class="logout-btn" onclick="showProfile()">Profil</button>
+                        <button class="logout-btn" onclick="logout()">Abmelden</button>
+                    </div>
+                    <div class="user-info" id="masterInfo" style="display: none;">
+                        <span id="masterName">Mitarbeiter</span>
+                        <button class="logout-btn" onclick="showMasterDashboard()">Dashboard</button>
+                        <button class="logout-btn" onclick="masterLogout()">Abmelden</button>
+                    </div>
+                    <button class="nav-btn" onclick="showCart()" id="cartBtn" style="position: relative;">
+                        Warenkorb
+                        <span class="cart-counter" id="cartCounter">0</span>
+                    </button>
+                    <button class="nav-btn" onclick="showNewOrders()" id="ordersBtn" style="position: relative; display: none;">
+                        Neue Bestellungen
+                        <span class="cart-counter" id="ordersCounter">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
