@@ -850,6 +850,150 @@ import { CONFIG } from './config.js';
         }
     };
 
+// UIUtils Objekt erweitern:
+
+export const UIUtils = {
+    showNotification(message, type = 'success', duration = 4000) {
+        // Existing notification code...
+        const notification = document.createElement('div');
+        
+        const colors = {
+            success: 'linear-gradient(135deg, #4caf50, #66bb6a)',
+            error: 'linear-gradient(135deg, #f44336, #ef5350)',
+            warning: 'linear-gradient(135deg, #ff9800, #ffb74d)',
+            info: 'linear-gradient(135deg, #2196f3, #42a5f5)'
+        };
+        
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${colors[type] || colors.success};
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1001;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s ease;
+            max-width: 300px;
+            word-wrap: break-word;
+            font-family: Georgia, serif;
+            font-size: 14px;
+        `;
+        
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, duration);
+        
+        return notification;
+    },
+    
+    showLoading(message = 'Lädt...') {
+        const existing = document.getElementById('globalLoading');
+        if (existing) return;
+        
+        const loading = document.createElement('div');
+        loading.id = 'globalLoading';
+        loading.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        `;
+        
+        loading.innerHTML = `
+            <div style="background: white; padding: 2rem; border-radius: 10px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                <div style="border: 4px solid #f3f3f3; border-top: 4px solid #ff6b35; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <div style="color: #5d4037; font-weight: bold;">${message}</div>
+            </div>
+        `;
+        
+        document.body.appendChild(loading);
+    },
+    
+    hideLoading() {
+        const loading = document.getElementById('globalLoading');
+        if (loading) loading.remove();
+    },
+    
+    showModal(modalId) {
+        // Hide all modals first
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+        
+        // Show specific modal
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'block';
+            // Add animation class if needed
+            setTimeout(() => modal.classList.add('modal-open'), 10);
+            
+            // Focus management for accessibility
+            const firstInput = modal.querySelector('input, button, select, textarea');
+            if (firstInput) {
+                setTimeout(() => firstInput.focus(), 100);
+            }
+        }
+    },
+    
+    hideModal(modalId) {
+        if (modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('modal-open');
+            }
+        } else {
+            // Hide all modals
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.style.display = 'none';
+                modal.classList.remove('modal-open');
+            });
+        }
+    },
+    
+    // NEUE METHODE: Modal Status prüfen
+    isModalOpen(modalId) {
+        const modal = document.getElementById(modalId);
+        return modal ? modal.style.display === 'block' : false;
+    },
+    
+    // NEUE METHODE: Aktuelle Modal ermitteln
+    getCurrentModal() {
+        const openModal = document.querySelector('.modal[style*="block"]');
+        return openModal ? openModal.id : null;
+    },
+    
+    updateElementText(selector, text) {
+        const element = document.querySelector(selector);
+        if (element) element.textContent = text;
+    },
+    
+    updateElementHTML(selector, html) {
+        const element = document.querySelector(selector);
+        if (element) element.innerHTML = html;
+    }
+};
+
 // CSS Animations hinzufügen
 const style = document.createElement('style');
 style.textContent = `
