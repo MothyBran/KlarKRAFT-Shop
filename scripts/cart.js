@@ -855,6 +855,34 @@ export class CartManager {
         
         return true;
     }
+
+// In CartManager Klasse ergänzen:
+
+/**
+ * Event Listeners hinzufügen - erweiterte Version
+ */
+addEventListeners() {
+    // Modal close events
+    window.addEventListener('click', (event) => {
+        if (event.target.classList.contains('modal')) {
+            UIUtils.hideModal();
+        }
+    });
+    
+    // Close button events
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('close')) {
+            UIUtils.hideModal();
+        }
+    });
+    
+    // Escape key to close modals
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            UIUtils.hideModal();
+        }
+    });
+}
     
     // Event listener methods
     addEventListener(type, listener) {
