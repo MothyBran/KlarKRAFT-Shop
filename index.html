@@ -524,20 +524,5 @@
     <!-- Main application controller -->
     <script src="scripts/app.js"></script>
     
-    <!-- Initialize application -->
-    <script>
-        // Initialize app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 KlarKRAFT Shop wird initialisiert...');
-            App.init();
-        });
-        
-        // Modal close on background click
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                App.closeModal();
-            }
-        };
-    </script>
 </body>
 </html>
