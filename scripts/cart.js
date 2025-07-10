@@ -653,6 +653,209 @@ export class CartManager {
         }
     }
 
+    // Ergänzungen für scripts/cart.js - Diese Methoden zur CartManager Klasse hinzufügen:
+
+    /**
+     * Produktmenge im Detail-Modal ändern
+     */
+    changeDetailQuantity(change) {
+        const input = document.getElementById('detailQuantity');
+        if (input) {
+            const currentValue = parseInt(input.value) || 1;
+            const newValue = Math.max(1, Math.min(10, currentValue + change));
+            input.value = newValue;
+        }
+    }
+    
+    /**
+     * Zusätzliche globale Funktionen für HTML onclick Handler
+     */
+    setupCartGlobalMethods() {
+        // Quantity change function für Product Detail Modal
+        window.changeDetailQuantity = (change) => {
+            this.changeDetailQuantity(change);
+        };
+        
+        // Add to cart with quantity from detail modal
+        window.addToCartFromDetail = (productId) => {
+            this.addToCartWithQuantity(productId);
+        };
+    }
+    
+    /**
+     * Cart initialization erweitern
+     */
+    init() {
+        this.loadCart();
+        this.addEventListeners();
+        this.updateCartCounter();
+        this.setupCartGlobalMethods(); // Neue Methode hinzufügen
+        
+        console.log('🛒 CartManager initialisiert');
+    }
+    
+    /**
+     * Bestellung stornieren (aus Order Confirmation)
+     */
+    cancelOrderFromConfirmation() {
+        try {
+            // Hide order confirmation
+            const confirmation = document.getElementById('orderConfirmation');
+            if (confirmation) {
+                confirmation.style.display = 'none';
+            }
+            
+            // Reset payment method selection
+            this.selectedPaymentMethod = null;
+            
+            // Clear active payment buttons
+            document.querySelectorAll('.payment-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Hide payment forms
+            const forms = document.getElementById('paymentForms');
+            if (forms) {
+                forms.innerHTML = '';
+            }
+            
+            UIUtils.showNotification('Bestellung abgebrochen', 'info');
+            
+        } catch (error) {
+            ErrorHandler.handleAsyncError(error, 'CartManager.cancelOrderFromConfirmation');
+        }
+    }
+    
+    /**
+     * Session wiederherstellen
+     */
+    restoreSession() {
+        try {
+            this.loadCart();
+            console.log('✅ Cart-Session wiederhergestellt');
+            return true;
+        } catch (error) {
+            console.error('❌ Fehler beim Wiederherstellen der Cart-Session:', error);
+            this.cart = [];
+            return false;
+        }
+    }
+    
+    /**
+     * Zahlung validieren - erweiterte Version
+     */
+    validatePaymentMethod() {
+        const activePaymentMethod = document.querySelector('.payment-btn.active');
+        const hasSelectedPaymentMethod = this.selectedPaymentMethod !== null;
+        
+        if (!hasSelectedPaymentMethod && !activePaymentMethod) {
+            UIUtils.showNotification('⚠️ Bitte wählen Sie eine Zahlungsmethode aus!', 'warning');
+            return false;
+        }
+    
+        // Validate new payment method form if needed
+        if (activePaymentMethod) {
+            return this.validateNewPaymentMethodForm(activePaymentMethod);
+        }
+    
+        return true;
+    }
+    
+    /**
+     * Neue Zahlungsmethode validieren - erweiterte Version
+     */
+    validateNewPaymentMethodForm(activeButton) {
+        const methodType = activeButton.id.replace('Btn', '');
+        
+        switch (methodType) {
+            case 'paypal':
+                const email = document.getElementById('paypalEmail');
+                if (!email?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie Ihre PayPal-E-Mail-Adresse ein!', 'warning');
+                    return false;
+                }
+                if (!Validator.isValidEmail(email.value.trim())) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie eine gültige PayPal-E-Mail-Adresse ein!', 'warning');
+                    return false;
+                }
+                break;
+                
+            case 'sepa':
+                const sepaName = document.getElementById('sepaName');
+                const sepaIban = document.getElementById('sepaIban');
+                const sepaMandate = document.getElementById('sepaMandate');
+                
+                if (!sepaName?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie den Namen für die Lastschrift ein!', 'warning');
+                    return false;
+                }
+                
+                if (!sepaIban?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie Ihre IBAN ein!', 'warning');
+                    return false;
+                }
+                
+                if (!Validator.isValidIBAN(sepaIban.value.trim())) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie eine gültige IBAN ein!', 'warning');
+                    return false;
+                }
+                
+                if (!sepaMandate?.checked) {
+                    UIUtils.showNotification('⚠️ Bitte bestätigen Sie das SEPA-Lastschriftmandat!', 'warning');
+                    return false;
+                }
+                break;
+                
+            case 'card':
+                const cardName = document.getElementById('cardName');
+                const cardNumber = document.getElementById('cardNumber');
+                const cardExpiry = document.getElementById('cardExpiry');
+                const cardCvv = document.getElementById('cardCvv');
+                
+                if (!cardName?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie den Namen auf der Karte ein!', 'warning');
+                    return false;
+                }
+                
+                if (!cardNumber?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie die Kartennummer ein!', 'warning');
+                    return false;
+                }
+                
+                if (!Validator.isValidCreditCard(cardNumber.value.trim())) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie eine gültige Kartennummer ein!', 'warning');
+                    return false;
+                }
+                
+                if (!cardExpiry?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie das Ablaufdatum ein!', 'warning');
+                    return false;
+                }
+                
+                if (!Validator.isValidExpiryDate(cardExpiry.value.trim())) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie ein gültiges Ablaufdatum ein (MM/JJ)!', 'warning');
+                    return false;
+                }
+                
+                if (!cardCvv?.value.trim()) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie den CVV-Code ein!', 'warning');
+                    return false;
+                }
+                
+                if (!Validator.isValidCVV(cardCvv.value.trim())) {
+                    UIUtils.showNotification('⚠️ Bitte geben Sie einen gültigen CVV-Code ein!', 'warning');
+                    return false;
+                }
+                break;
+                
+            default:
+                UIUtils.showNotification('⚠️ Unbekannte Zahlungsmethode!', 'error');
+                return false;
+        }
+        
+        return true;
+    }
+    
     // Event listener methods
     addEventListener(type, listener) {
         this.eventTarget.addEventListener(type, listener);
