@@ -48,7 +48,7 @@ class KlarKraftApp {
             // 2. Module registrieren und verfügbar machen
             this.registerModules();
             
-            // 3. Globale Methoden für HTML setup
+            // 3. WICHTIG: Globale Methoden für HTML SOFORT verfügbar machen
             this.setupGlobalMethods();
             
             // 4. Sessions wiederherstellen
@@ -111,31 +111,275 @@ class KlarKraftApp {
     }
 
     /**
-     * Globale Methoden für HTML onclick events
+     * KRITISCH: Globale Methoden für HTML onclick events sofort verfügbar machen
      */
     setupGlobalMethods() {
-        // Hauptnavigation
-        window.showProducts = () => this.showProducts();
-        window.showAuth = () => authManager.showAuth();
-        window.showCart = () => cartManager.showCart();
-        window.showProfile = () => authManager.showProfile();
+        console.log('🔧 Globale Methoden werden eingerichtet...');
         
-        // Modal Management
-        window.closeModal = () => UIUtils.closeModal();
-        window.showLegalModal = (type) => this.showLegalModal(type);
+        // === HAUPTNAVIGATION ===
+        window.showProducts = () => {
+            this.showProducts();
+        };
         
-        // Produkt-Funktionen (delegiert an productManager)
-        window.showProductDetail = (productId) => productManager.showProductDetail(productId);
-        window.addToCart = (productId) => cartManager.addToCart(productId);
+        window.showAuth = () => {
+            if (authManager && authManager.showAuth) {
+                authManager.showAuth();
+            } else {
+                UIUtils.showModal('authModal');
+            }
+        };
         
-        // Demo-Funktionen
-        window.quickLogin = () => authManager.quickLogin();
-        window.quickRegister = () => authManager.quickRegister();
-        window.googleAuth = () => authManager.googleAuth();
+        window.showCart = () => {
+            if (cartManager && cartManager.showCart) {
+                cartManager.showCart();
+            } else {
+                UIUtils.showModal('cartModal');
+            }
+        };
         
-        // Master-Funktionen sind bereits in masterManager.setupGlobalMethods() definiert
+        window.showProfile = () => {
+            if (authManager && authManager.showProfile) {
+                authManager.showProfile();
+            } else {
+                this.showProfilePage();
+            }
+        };
         
-        console.log('🔧 Globale Methoden eingerichtet');
+        window.logout = () => {
+            if (authManager && authManager.logout) {
+                authManager.logout();
+            }
+        };
+        
+        // === MODAL MANAGEMENT ===
+        window.closeModal = () => {
+            UIUtils.hideModal();
+        };
+        
+        window.showLegalModal = (type) => {
+            this.showLegalModal(type);
+        };
+        
+        // === PRODUKT-FUNKTIONEN ===
+        window.showProductDetail = (productId) => {
+            if (productManager && productManager.showProductDetail) {
+                productManager.showProductDetail(productId);
+            }
+        };
+        
+        window.addToCart = (productId, quantity = 1) => {
+            if (cartManager && cartManager.addProduct) {
+                const product = productManager?.getProductById(productId);
+                if (product) {
+                    cartManager.addProduct(product, quantity);
+                }
+            }
+        };
+        
+        // === AUTH FUNKTIONEN ===
+        window.quickLogin = () => {
+            if (authManager && authManager.quickLogin) {
+                authManager.quickLogin();
+            }
+        };
+        
+        window.quickRegister = () => {
+            if (authManager && authManager.quickRegister) {
+                authManager.quickRegister();
+            }
+        };
+        
+        window.googleAuth = () => {
+            if (authManager && authManager.googleAuth) {
+                authManager.googleAuth();
+            }
+        };
+        
+        window.switchAuthTab = (tab) => {
+            this.switchAuthTab(tab);
+        };
+        
+        // === CART FUNKTIONEN ===
+        window.togglePaymentOptions = () => {
+            const selector = document.getElementById('paymentMethodSelector');
+            if (selector) {
+                const isHidden = selector.style.display === 'none';
+                selector.style.display = isHidden ? 'block' : 'none';
+                
+                const btn = document.getElementById('togglePaymentBtn');
+                if (btn) {
+                    btn.textContent = isHidden ? 'Ausblenden' : 'Andere Zahlungsmethode wählen';
+                }
+            }
+        };
+        
+        window.selectPaymentMethod = (method) => {
+            // Remove active class from all buttons
+            document.querySelectorAll('.payment-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to selected button
+            const selectedBtn = document.getElementById(`${method}Btn`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active');
+            }
+            
+            // Show payment form
+            this.showPaymentForm(method);
+        };
+        
+        window.completeOrder = () => {
+            if (cartManager && cartManager.completeOrder) {
+                cartManager.completeOrder();
+            }
+        };
+        
+        window.cancelOrder = () => {
+            const confirmation = document.getElementById('orderConfirmation');
+            if (confirmation) {
+                confirmation.style.display = 'none';
+            }
+        };
+        
+        // === MASTER FUNKTIONEN ===
+        window.showMasterLogin = () => {
+            if (masterManager && masterManager.showMasterLogin) {
+                masterManager.showMasterLogin();
+            } else {
+                UIUtils.showModal('masterLoginModal');
+            }
+        };
+        
+        window.handleMasterLogin = (event) => {
+            if (masterManager && masterManager.handleMasterLogin) {
+                masterManager.handleMasterLogin(event);
+            }
+        };
+        
+        window.quickMasterLogin = (type) => {
+            if (masterManager && masterManager.quickMasterLogin) {
+                masterManager.quickMasterLogin(type);
+            }
+        };
+        
+        window.masterLogout = () => {
+            if (masterManager && masterManager.masterLogout) {
+                masterManager.masterLogout();
+            }
+        };
+        
+        window.showMasterDashboard = () => {
+            if (masterManager && masterManager.showMasterDashboard) {
+                masterManager.showMasterDashboard();
+            }
+        };
+        
+        window.switchMasterTab = (tab) => {
+            if (masterManager && masterManager.switchMasterTab) {
+                masterManager.switchMasterTab(tab);
+            }
+        };
+        
+        window.showNewOrders = () => {
+            if (masterManager && masterManager.showNewOrders) {
+                masterManager.showNewOrders();
+            }
+        };
+        
+        // === FORMULAR HANDLER ===
+        window.updatePersonalData = (event) => {
+            if (authManager && authManager.updatePersonalData) {
+                authManager.updatePersonalData(event);
+            }
+        };
+        
+        window.updateShippingAddress = (event) => {
+            if (authManager && authManager.updateShippingAddress) {
+                authManager.updateShippingAddress(event);
+            }
+        };
+        
+        window.changePassword = (event) => {
+            if (authManager && authManager.changePassword) {
+                authManager.changePassword(event);
+            }
+        };
+        
+        // === ZUSÄTZLICHE MASTER FUNKTIONEN ===
+        window.processOrder = (orderId) => {
+            if (masterManager && masterManager.processOrder) {
+                masterManager.processOrder(orderId);
+            }
+        };
+        
+        window.quickUpdateOrderStatus = (orderId, status) => {
+            if (masterManager && masterManager.quickUpdateOrderStatus) {
+                masterManager.quickUpdateOrderStatus(orderId, status);
+            }
+        };
+        
+        window.viewOrderDetailsInModal = (orderId) => {
+            if (masterManager && masterManager.viewOrderDetails) {
+                masterManager.viewOrderDetails(orderId);
+            }
+        };
+        
+        window.toggleDemoMode = () => {
+            if (masterManager && masterManager.toggleDemoMode) {
+                masterManager.toggleDemoMode();
+            }
+        };
+        
+        window.clearTestData = () => {
+            if (masterManager && masterManager.clearTestData) {
+                masterManager.clearTestData();
+            }
+        };
+        
+        window.resetAllData = () => {
+            if (masterManager && masterManager.resetAllData) {
+                masterManager.resetAllData();
+            }
+        };
+        
+        window.exportAllData = () => {
+            if (masterManager && masterManager.exportAllData) {
+                masterManager.exportAllData();
+            }
+        };
+        
+        window.exportCustomersCSV = () => {
+            if (masterManager && masterManager.exportCustomersCSV) {
+                masterManager.exportCustomersCSV();
+            }
+        };
+        
+        window.exportOrdersCSV = () => {
+            if (masterManager && masterManager.exportOrdersCSV) {
+                masterManager.exportOrdersCSV();
+            }
+        };
+        
+        window.showAddPaymentMethod = () => {
+            UIUtils.showModal('addPaymentModal');
+        };
+        
+        window.selectNewPaymentMethod = (method) => {
+            // Ähnlich wie selectPaymentMethod aber für das Add Modal
+            document.querySelectorAll('#addPaymentModal .payment-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const selectedBtn = document.getElementById(`new${method.charAt(0).toUpperCase() + method.slice(1)}Btn`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active');
+            }
+            
+            this.showNewPaymentForm(method);
+        };
+        
+        console.log('✅ Alle globalen Methoden erfolgreich eingerichtet');
     }
 
     /**
@@ -177,7 +421,7 @@ class KlarKraftApp {
         // Global window click handler für Modals
         window.addEventListener('click', (event) => {
             if (event.target.classList.contains('modal')) {
-                UIUtils.closeModal();
+                UIUtils.hideModal();
             }
         });
 
@@ -196,7 +440,9 @@ class KlarKraftApp {
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                authManager.handleLogin(e);
+                if (authManager && authManager.handleLogin) {
+                    authManager.handleLogin(e);
+                }
                 return false;
             }, { passive: false });
             console.log('✅ Login-Formular Event-Listener hinzugefügt');
@@ -208,7 +454,9 @@ class KlarKraftApp {
             registerForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                authManager.handleRegister(e);
+                if (authManager && authManager.handleRegister) {
+                    authManager.handleRegister(e);
+                }
                 return false;
             }, { passive: false });
             console.log('✅ Register-Formular Event-Listener hinzugefügt');
@@ -219,7 +467,9 @@ class KlarKraftApp {
         if (personalForm) {
             personalForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                authManager.updatePersonalData(e);
+                if (authManager && authManager.updatePersonalData) {
+                    authManager.updatePersonalData(e);
+                }
                 return false;
             });
             console.log('✅ Personal-Data-Formular Event-Listener hinzugefügt');
@@ -230,7 +480,9 @@ class KlarKraftApp {
         if (shippingForm) {
             shippingForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                authManager.updateShippingAddress(e);
+                if (authManager && authManager.updateShippingAddress) {
+                    authManager.updateShippingAddress(e);
+                }
                 return false;
             });
             console.log('✅ Shipping-Address-Formular Event-Listener hinzugefügt');
@@ -241,7 +493,9 @@ class KlarKraftApp {
         if (passwordForm) {
             passwordForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                authManager.changePassword(e);
+                if (authManager && authManager.handlePasswordChange) {
+                    authManager.handlePasswordChange(e);
+                }
                 return false;
             });
             console.log('✅ Password-Change-Formular Event-Listener hinzugefügt');
@@ -252,7 +506,9 @@ class KlarKraftApp {
         if (masterForm) {
             masterForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                masterManager.handleMasterLogin(e);
+                if (masterManager && masterManager.handleMasterLogin) {
+                    masterManager.handleMasterLogin(e);
+                }
                 return false;
             });
             console.log('✅ Master-Login-Formular Event-Listener hinzugefügt');
@@ -384,12 +640,20 @@ class KlarKraftApp {
      */
     initializeUI() {
         // Produkte rendern
-        productManager.renderProducts();
+        if (productManager && productManager.renderProducts) {
+            productManager.renderProducts();
+        }
         
         // UI-State aktualisieren
-        authManager.updateUI();
-        masterManager.updateUI();
-        cartManager.updateCartCounter();
+        if (authManager && authManager.updateUI) {
+            authManager.updateUI();
+        }
+        if (masterManager && masterManager.updateUI) {
+            masterManager.updateUI();
+        }
+        if (cartManager && cartManager.updateCartCounter) {
+            cartManager.updateCartCounter();
+        }
         
         console.log('🎨 UI initialisiert');
     }
@@ -399,42 +663,54 @@ class KlarKraftApp {
      */
     connectModuleEvents() {
         // Auth -> Master: User logout -> Master logout
-        authManager.addEventListener('userLoggedOut', () => {
-            if (masterManager.isMasterLoggedIn) {
-                masterManager.masterLogout();
-            }
-        });
+        if (authManager && authManager.addEventListener) {
+            authManager.addEventListener('userLoggedOut', () => {
+                if (masterManager && masterManager.isMasterLoggedIn) {
+                    masterManager.masterLogout();
+                }
+            });
+        }
 
         // Master -> Auth: Master login -> User logout
-        masterManager.addEventListener('masterLoggedIn', () => {
-            if (authManager.isUserLoggedIn) {
-                authManager.logout();
-            }
-        });
+        if (masterManager && masterManager.addEventListener) {
+            masterManager.addEventListener('masterLoggedIn', () => {
+                if (authManager && authManager.isLoggedIn) {
+                    authManager.logout();
+                }
+            });
+        }
 
         // Cart -> Master: New order -> Update orders counter
-        cartManager.addEventListener('newOrder', (event) => {
-            if (masterManager.isMasterLoggedIn) {
-                masterManager.handleNewOrder(event.detail.order);
-                
-                // Demo mode logic
-                const demoModeEnabled = SettingsStorage.getDemoMode();
-                const hasMasterSession = masterManager.isMasterLoggedIn;
-                
-                if (demoModeEnabled && !hasMasterSession) {
-                    this.startDemoOrderProcessing(event.detail.order);
+        if (cartManager && cartManager.addEventListener) {
+            cartManager.addEventListener('newOrder', (event) => {
+                if (masterManager && masterManager.isMasterLoggedIn) {
+                    masterManager.handleNewOrder(event.detail.order);
+                    
+                    // Demo mode logic
+                    const demoModeEnabled = SettingsStorage.getDemoMode();
+                    const hasMasterSession = masterManager.isMasterLoggedIn;
+                    
+                    if (demoModeEnabled && !hasMasterSession) {
+                        this.startDemoOrderProcessing(event.detail.order);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Master -> UI: Status changes -> Update UI
-        masterManager.addEventListener('masterLoggedIn', () => {
-            authManager.updateUI();
-        });
+        if (masterManager && masterManager.addEventListener) {
+            masterManager.addEventListener('masterLoggedIn', () => {
+                if (authManager && authManager.updateUI) {
+                    authManager.updateUI();
+                }
+            });
 
-        masterManager.addEventListener('masterLoggedOut', () => {
-            authManager.updateUI();
-        });
+            masterManager.addEventListener('masterLoggedOut', () => {
+                if (authManager && authManager.updateUI) {
+                    authManager.updateUI();
+                }
+            });
+        }
 
         console.log('🔗 Module-Events verbunden');
     }
@@ -511,8 +787,176 @@ class KlarKraftApp {
         if (mainContent) mainContent.classList.remove('hidden');
         if (profilePage) profilePage.classList.remove('active');
         
-        UIUtils.closeModal();
+        UIUtils.hideModal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    
+    /**
+     * Profil-Seite anzeigen
+     */
+    showProfilePage() {
+        const mainContent = document.getElementById('mainContent');
+        const profilePage = document.getElementById('profilePage');
+        
+        if (mainContent) mainContent.classList.add('hidden');
+        if (profilePage) profilePage.classList.add('active');
+        
+        UIUtils.hideModal();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /**
+     * Auth Tab wechseln
+     */
+    switchAuthTab(tab) {
+        // Remove active from all tabs and forms
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        
+        // Add active to selected tab and form
+        const selectedTab = document.querySelector(`.auth-tab:nth-child(${tab === 'login' ? '1' : '2'})`);
+        const selectedForm = document.getElementById(`${tab}Form`);
+        
+        if (selectedTab) selectedTab.classList.add('active');
+        if (selectedForm) selectedForm.classList.add('active');
+    }
+
+    /**
+     * Payment Form anzeigen
+     */
+    showPaymentForm(method) {
+        const formsContainer = document.getElementById('paymentForms');
+        if (!formsContainer) return;
+        
+        const forms = {
+            paypal: `
+                <div class="payment-form">
+                    <h4>💳 PayPal</h4>
+                    <div class="form-group">
+                        <label for="paypalEmail">PayPal E-Mail:</label>
+                        <input type="email" id="paypalEmail" required>
+                    </div>
+                </div>
+            `,
+            sepa: `
+                <div class="payment-form">
+                    <h4>🏦 SEPA-Lastschrift</h4>
+                    <div class="form-group">
+                        <label for="sepaName">Name:</label>
+                        <input type="text" id="sepaName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sepaIban">IBAN:</label>
+                        <input type="text" id="sepaIban" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="sepaMandate" required>
+                            Ich erteile das SEPA-Lastschriftmandat
+                        </label>
+                    </div>
+                </div>
+            `,
+            card: `
+                <div class="payment-form">
+                    <h4>💳 Kreditkarte</h4>
+                    <div class="form-group">
+                        <label for="cardName">Name auf der Karte:</label>
+                        <input type="text" id="cardName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardNumber">Kartennummer:</label>
+                        <input type="text" id="cardNumber" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="cardExpiry">Gültig bis (MM/JJ):</label>
+                            <input type="text" id="cardExpiry" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cardCvv">CVV:</label>
+                            <input type="text" id="cardCvv" required>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+        
+        formsContainer.innerHTML = forms[method] || '';
+    }
+
+    /**
+     * Neue Payment Form anzeigen (für Add Modal)
+     */
+    showNewPaymentForm(method) {
+        const formsContainer = document.getElementById('newPaymentForms');
+        if (!formsContainer) return;
+        
+        // Gleiche Forms wie oben, aber mit anderen IDs
+        const forms = {
+            paypal: `
+                <div class="payment-form">
+                    <h4>💳 PayPal</h4>
+                    <div class="form-group">
+                        <label for="newPaypalEmail">PayPal E-Mail:</label>
+                        <input type="email" id="newPaypalEmail" required>
+                    </div>
+                    <button class="btn" onclick="saveNewPaymentMethod('paypal')">Zahlungsmethode speichern</button>
+                </div>
+            `,
+            sepa: `
+                <div class="payment-form">
+                    <h4>🏦 SEPA-Lastschrift</h4>
+                    <div class="form-group">
+                        <label for="newSepaName">Name:</label>
+                        <input type="text" id="newSepaName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newSepaIban">IBAN:</label>
+                        <input type="text" id="newSepaIban" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="newSepaMandate" required>
+                            Ich erteile das SEPA-Lastschriftmandat
+                        </label>
+                    </div>
+                    <button class="btn" onclick="saveNewPaymentMethod('sepa')">Zahlungsmethode speichern</button>
+                </div>
+            `,
+            card: `
+                <div class="payment-form">
+                    <h4>💳 Kreditkarte</h4>
+                    <div class="form-group">
+                        <label for="newCardName">Name auf der Karte:</label>
+                        <input type="text" id="newCardName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newCardNumber">Kartennummer:</label>
+                        <input type="text" id="newCardNumber" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="newCardExpiry">Gültig bis (MM/JJ):</label>
+                            <input type="text" id="newCardExpiry" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newCardCvv">CVV:</label>
+                            <input type="text" id="newCardCvv" required>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="saveNewPaymentMethod('card')">Zahlungsmethode speichern</button>
+                </div>
+            `
+        };
+        
+        formsContainer.innerHTML = forms[method] || '';
+        
+        // Globale Funktion für das Speichern
+        window.saveNewPaymentMethod = (method) => {
+            UIUtils.showNotification('✅ Zahlungsmethode gespeichert!', 'success');
+            UIUtils.hideModal('addPaymentModal');
+        };
     }
 
     /**
