@@ -1,5 +1,4 @@
-    <script>
-        // Product Data
+// Product Data
         const products = [
             {
                 id: 1,
@@ -2719,4 +2718,3 @@ ${order.shippingAddress.country}`;
             console.log('✅ DOM bereits geladen, initialisiere...');
             init();
         }
-    </script>
