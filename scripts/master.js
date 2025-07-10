@@ -1129,6 +1129,63 @@ export class MasterManager {
             statusInfo += `\nStorniert am: ${order.cancelledAt ? Formatter.formatDateTime(order.cancelledAt) : 'Unbekannt'}`;
             statusInfo += `\nGrund: ${order.cancelReason || 'Kein Grund angegeben'}`;
         }
+
+// In MasterManager Klasse ergänzen:
+
+/**
+ * Kunden-Account löschen - korrigierte Version
+ */
+deleteCustomerAccount(customerId) {
+    try {
+        const user = UserStorage.findUserById(customerId);
+        
+        if (!user) {
+            UIUtils.showNotification('❌ Kunde nicht gefunden.', 'error');
+            return;
+        }
+
+        // Check if user has active orders
+        const userOrders = OrderStorage.getOrdersByCustomer(customerId);
+        const activeOrders = userOrders.filter(o => o.status === 'pending' || o.status === 'processing');
+        
+        if (activeOrders.length > 0) {
+            if (!confirm(`⚠️ ACHTUNG: Der Kunde ${user.name} hat ${activeOrders.length} aktive Bestellung(en).\n\nSollen diese automatisch storniert werden?`)) {
+                return;
+            }
+            
+            // Cancel active orders
+            activeOrders.forEach(order => {
+                OrderStorage.updateOrder(order.orderId, {
+                    status: 'cancelled',
+                    cancelledBy: this.currentMaster.name,
+                    cancelledAt: new Date().toISOString(),
+                    cancelReason: 'Kundenkonto gelöscht'
+                });
+            });
+        }
+
+        // Final confirmation
+        if (!confirm(`🗑️ Möchten Sie das Kundenkonto von "${user.name}" (${user.email}) wirklich unwiderruflich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!`)) {
+            return;
+        }
+
+        // Remove user - KORRIGIERTE VERSION
+        const success = UserStorage.deleteUser(customerId);
+        
+        if (success) {
+            ActivityStorage.addLog('Customer Deleted', `Customer account deleted: ${user.name} (${user.email}) by ${this.currentMaster.name}`);
+            UIUtils.showNotification(`✅ Kundenkonto von ${user.name} wurde gelöscht.`, 'success');
+            
+            // Reload customer list
+            this.loadMasterCustomers();
+        } else {
+            UIUtils.showNotification('❌ Fehler beim Löschen des Kundenkontos.', 'error');
+        }
+
+    } catch (error) {
+        ErrorHandler.handleAsyncError(error, 'MasterManager.deleteCustomerAccount');
+    }
+}
         
         return `Bestellung: #${order.orderId}
 Kunde: ${order.customerName} (${order.customerEmail})
