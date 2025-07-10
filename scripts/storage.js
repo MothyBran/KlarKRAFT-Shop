@@ -2,6 +2,65 @@
 import { CONFIG } from './config.js';
 import { ErrorHandler } from './utils.js';
 
+export const UserStorage = {
+    getUsers() {
+        return storage.get(CONFIG.STORAGE_KEYS.USERS, []);
+    },
+
+    setUsers(users) {
+        return storage.set(CONFIG.STORAGE_KEYS.USERS, users);
+    },
+
+    getCurrentUser() {
+        return storage.get(CONFIG.STORAGE_KEYS.CURRENT_USER, null);
+    },
+
+    setCurrentUser(user) {
+        return storage.set(CONFIG.STORAGE_KEYS.CURRENT_USER, user);
+    },
+
+    removeCurrentUser() {
+        return storage.remove(CONFIG.STORAGE_KEYS.CURRENT_USER);
+    },
+
+    addUser(user) {
+        const users = this.getUsers();
+        users.push(user);
+        return this.setUsers(users);
+    },
+
+    updateUser(updatedUser) {
+        const users = this.getUsers();
+        const index = users.findIndex(u => u.customerId === updatedUser.customerId);
+        if (index !== -1) {
+            users[index] = updatedUser;
+            return this.setUsers(users);
+        }
+        return false;
+    },
+
+    // WICHTIG: Diese Methode fehlte!
+    deleteUser(customerId) {
+        const users = this.getUsers();
+        const filteredUsers = users.filter(u => u.customerId !== customerId);
+        return this.setUsers(filteredUsers);
+    },
+
+    removeUser(customerId) {
+        return this.deleteUser(customerId); // Alias für Konsistenz
+    },
+
+    findUserByEmail(email) {
+        const users = this.getUsers();
+        return users.find(u => u.email === email);
+    },
+
+    findUserById(customerId) {
+        const users = this.getUsers();
+        return users.find(u => u.customerId === customerId);
+    }
+};
+
 /**
  * Zentrales LocalStorage Management
  */
