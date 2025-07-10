@@ -1,35 +1,48 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <!-- ========== HEADBEREICH ========== -->
+    <!-- ========== HEADBEREICH ========== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KlarKRAFT - Energetische Reinigung für Ihr Zuhause</title>
+    
+    <!-- CSS Imports -->
+    <link rel="stylesheet" href="styles/utils/variables.css">
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components/header.css">
+    <link rel="stylesheet" href="styles/components/modal.css">
+    <link rel="stylesheet" href="styles/components/products.css">
+    <link rel="stylesheet" href="styles/components/cart.css">
+    <link rel="stylesheet" href="styles/components/dashboard.css">
+    <link rel="stylesheet" href="styles/utils/responsive.css">
+    
+    <!-- Preload critical scripts -->
+    <link rel="preload" href="scripts/config.js" as="script">
+    <link rel="preload" href="scripts/app.js" as="script">
 </head>
 <body>
     <header>
         <div class="container">
             <div class="header-content">
-                <div class="logo" onclick="showProducts()">KlarKRAFT</div>
+                <div class="logo" onclick="App.showProducts()">KlarKRAFT</div>
                 <div class="nav-buttons">
-                    <button class="nav-btn" onclick="showProducts()">Produkte</button>
-                    <button class="nav-btn" onclick="showAuth()" id="authBtn">Anmelden</button>
+                    <button class="nav-btn" onclick="App.showProducts()">Produkte</button>
+                    <button class="nav-btn" onclick="Auth.showAuth()" id="authBtn">Anmelden</button>
                     <div class="user-info" id="userInfo">
                         <span id="userName">Benutzer</span>
-                        <button class="logout-btn" onclick="showProfile()">Profil</button>
-                        <button class="logout-btn" onclick="logout()">Abmelden</button>
+                        <button class="logout-btn" onclick="App.showProfile()">Profil</button>
+                        <button class="logout-btn" onclick="Auth.logout()">Abmelden</button>
                     </div>
                     <div class="user-info" id="masterInfo" style="display: none;">
                         <span id="masterName">Mitarbeiter</span>
-                        <button class="logout-btn" onclick="showMasterDashboard()">Dashboard</button>
-                        <button class="logout-btn" onclick="masterLogout()">Abmelden</button>
+                        <button class="logout-btn" onclick="MasterDashboard.show()">Dashboard</button>
+                        <button class="logout-btn" onclick="Auth.masterLogout()">Abmelden</button>
                     </div>
-                    <button class="nav-btn" onclick="showCart()" id="cartBtn" style="position: relative;">
+                    <button class="nav-btn" onclick="Cart.show()" id="cartBtn" style="position: relative;">
                         Warenkorb
                         <span class="cart-counter" id="cartCounter">0</span>
                     </button>
-                    <button class="nav-btn" onclick="showNewOrders()" id="ordersBtn" style="position: relative; display: none;">
+                    <button class="nav-btn" onclick="MasterDashboard.showNewOrders()" id="ordersBtn" style="position: relative; display: none;">
                         Neue Bestellungen
                         <span class="cart-counter" id="ordersCounter">0</span>
                     </button>
@@ -60,14 +73,14 @@
             <div class="profile-header">
                 <h2>👤 Mein Profil</h2>
                 <p>Verwalten Sie Ihre persönlichen Daten, Zahlungsmethoden und Bestellungen</p>
-                <button class="nav-btn" onclick="showProducts()" style="margin-top: 1rem;">← Zurück zum Shop</button>
+                <button class="nav-btn" onclick="App.showProducts()" style="margin-top: 1rem;">← Zurück zum Shop</button>
             </div>
 
             <div class="profile-sections">
                 <!-- Personal Information -->
                 <div class="profile-section">
                     <h3>📋 Persönliche Daten</h3>
-                    <form id="personalDataForm" onsubmit="updatePersonalData(event)">
+                    <form id="personalDataForm">
                         <div class="form-group">
                             <label for="profileName">Name:</label>
                             <input type="text" id="profileName" required>
@@ -86,7 +99,7 @@
                     <!-- Password Change Section -->
                     <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #d7ccc8;">
                         <h4 style="color: #ff6b35; margin-bottom: 1rem;">🔒 Passwort ändern</h4>
-                        <form id="passwordChangeForm" onsubmit="changePassword(event)">
+                        <form id="passwordChangeForm">
                             <div class="form-group">
                                 <label for="currentPassword">Aktuelles Passwort:</label>
                                 <input type="password" id="currentPassword" required>
@@ -107,7 +120,7 @@
                 <!-- Shipping Address -->
                 <div class="profile-section">
                     <h3>📦 Lieferadresse</h3>
-                    <form id="shippingAddressForm" onsubmit="updateShippingAddress(event)">
+                    <form id="shippingAddressForm">
                         <div class="form-group">
                             <label for="shippingAddress">Straße und Hausnummer:</label>
                             <input type="text" id="shippingAddress" required>
@@ -138,7 +151,7 @@
                 <div class="profile-section">
                     <h3>💳 Zahlungsmethoden</h3>
                     <div id="paymentMethodsList"></div>
-                    <button class="btn" onclick="showAddPaymentMethod()">+ Neue Zahlungsmethode hinzufügen</button>
+                    <button class="btn" onclick="App.showAddPaymentMethod()">+ Neue Zahlungsmethode hinzufügen</button>
                 </div>
 
                 <!-- Order History -->
@@ -168,11 +181,11 @@
                 <div>
                     <h3 style="color: #ff6b35; margin-bottom: 1rem; font-size: 1.3rem;">Rechtliches</h3>
                     <ul style="list-style: none; padding: 0;">
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('impressum')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Impressum</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('agb')" style="color: white; text-decoration: none; transition: color 0.3s ease;">AGB</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('datenschutz')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Datenschutz</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('widerruf')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Widerrufsrecht</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('versand')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Versand & Zahlung</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('impressum')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Impressum</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('agb')" style="color: white; text-decoration: none; transition: color 0.3s ease;">AGB</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('datenschutz')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Datenschutz</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('widerruf')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Widerrufsrecht</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('versand')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Versand & Zahlung</a></li>
                     </ul>
                 </div>
 
@@ -180,11 +193,11 @@
                 <div>
                     <h3 style="color: #ff6b35; margin-bottom: 1rem; font-size: 1.3rem;">Kundenservice</h3>
                     <ul style="list-style: none; padding: 0;">
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('kontakt')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Kontakt</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('faq')" style="color: white; text-decoration: none; transition: color 0.3s ease;">FAQ</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('anwendung')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Anwendungshinweise</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('garantie')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Garantie</a></li>
-                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showMasterLogin()" style="color: #ff6b35; text-decoration: none; transition: color 0.3s ease; font-weight: bold;">🔐 Mitarbeiter Login</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('kontakt')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Kontakt</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('faq')" style="color: white; text-decoration: none; transition: color 0.3s ease;">FAQ</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('anwendung')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Anwendungshinweise</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="App.showLegalModal('garantie')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Garantie</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="Auth.showMasterLogin()" style="color: #ff6b35; text-decoration: none; transition: color 0.3s ease; font-weight: bold;">🔐 Mitarbeiter Login</a></li>
                     </ul>
                 </div>
 
@@ -212,10 +225,12 @@
         </div>
     </footer>
 
+    <!-- ========== MODALS ========== -->
+
     <!-- Product Detail Modal -->
     <div id="productModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <div id="productDetails"></div>
         </div>
     </div>
@@ -223,7 +238,7 @@
     <!-- Cart Modal -->
     <div id="cartModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <h2>Warenkorb</h2>
             <div id="cartItems"></div>
             <div class="cart-total" id="cartTotal">Gesamt: €0,00</div>
@@ -231,13 +246,13 @@
             <div id="paymentSection" style="margin-top: 2rem;">
                 <h3 style="color: #5d4037; margin-bottom: 1rem;">Zahlungsmethode:</h3>
                 <div id="savedPaymentMethods" style="margin-bottom: 1rem;"></div>
-                <button class="btn" onclick="togglePaymentOptions()" id="togglePaymentBtn">Andere Zahlungsmethode wählen</button>
+                <button class="btn" onclick="Cart.togglePaymentOptions()" id="togglePaymentBtn">Andere Zahlungsmethode wählen</button>
                 
                 <div id="paymentMethodSelector" style="display: none; margin-top: 1rem;">
                     <div class="payment-methods">
-                        <button class="payment-btn" onclick="selectPaymentMethod('paypal')" id="paypalBtn">💳 PayPal</button>
-                        <button class="payment-btn" onclick="selectPaymentMethod('sepa')" id="sepaBtn">🏦 Lastschrift</button>
-                        <button class="payment-btn" onclick="selectPaymentMethod('card')" id="cardBtn">💳 Kreditkarte</button>
+                        <button class="payment-btn" onclick="Cart.selectPaymentMethod('paypal')" id="paypalBtn">💳 PayPal</button>
+                        <button class="payment-btn" onclick="Cart.selectPaymentMethod('sepa')" id="sepaBtn">🏦 Lastschrift</button>
+                        <button class="payment-btn" onclick="Cart.selectPaymentMethod('card')" id="cardBtn">💳 Kreditkarte</button>
                     </div>
                     
                     <!-- Payment Forms -->
@@ -248,10 +263,10 @@
                 <div id="orderConfirmation" style="display: none; margin-top: 2rem; padding: 1.5rem; background: rgba(255,107,53,0.1); border-radius: 10px; border: 2px solid #ff6b35;">
                     <h4 style="color: #ff6b35; margin-bottom: 1rem;">🛒 Bestellung bestätigen</h4>
                     <div id="orderSummary" style="margin-bottom: 1rem;"></div>
-                    <button type="button" class="btn" onclick="completeOrder()" style="background: #4caf50; font-size: 1.1rem; padding: 1rem 2rem;">
+                    <button type="button" class="btn" onclick="Cart.completeOrder()" style="background: #4caf50; font-size: 1.1rem; padding: 1rem 2rem;">
                         ✅ Bestellung jetzt abschließen
                     </button>
-                    <button type="button" class="btn" onclick="cancelOrder()" style="background: #f44336; margin-top: 0.5rem;">
+                    <button type="button" class="btn" onclick="Cart.cancelOrder()" style="background: #f44336; margin-top: 0.5rem;">
                         ❌ Abbrechen
                     </button>
                 </div>
@@ -262,16 +277,16 @@
     <!-- Auth Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchAuthTab('login')">Anmelden</button>
-                <button class="auth-tab" onclick="switchAuthTab('register')">Registrieren</button>
+                <button class="auth-tab active" onclick="Auth.switchTab('login')">Anmelden</button>
+                <button class="auth-tab" onclick="Auth.switchTab('register')">Registrieren</button>
             </div>
             
             <!-- Login Form -->
             <div id="loginForm" class="auth-form active">
                 <h2>Anmelden</h2>
-                <button class="google-btn" onclick="googleAuth()">📧 Mit Google anmelden</button>
+                <button class="google-btn" onclick="Auth.googleAuth()">📧 Mit Google anmelden</button>
                 <div class="divider"><span>oder</span></div>
                 <form id="customerLoginForm">
                     <div class="form-group">
@@ -283,14 +298,14 @@
                         <input type="password" id="loginPassword" name="loginPassword" required>
                     </div>
                     <button type="submit" class="btn">Anmelden</button>
-                    <button type="button" class="btn" onclick="quickLogin()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Login (Max Mustermann)</button>
+                    <button type="button" class="btn" onclick="Auth.quickLogin()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Login (Max Mustermann)</button>
                 </form>
             </div>
             
             <!-- Register Form -->
             <div id="registerForm" class="auth-form">
                 <h2>Registrieren</h2>
-                <button class="google-btn" onclick="googleAuth()">📧 Mit Google registrieren</button>
+                <button class="google-btn" onclick="Auth.googleAuth()">📧 Mit Google registrieren</button>
                 <div class="divider"><span>oder</span></div>
                 <form id="customerRegisterForm">
                     <div class="form-group">
@@ -318,7 +333,7 @@
                         <input type="text" id="registerZip" name="registerZip" required>
                     </div>
                     <button type="submit" class="btn">Registrieren</button>
-                    <button type="button" class="btn" onclick="quickRegister()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Registrierung</button>
+                    <button type="button" class="btn" onclick="Auth.quickRegister()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Registrierung</button>
                 </form>
             </div>
         </div>
@@ -327,13 +342,13 @@
     <!-- Add Payment Method Modal -->
     <div id="addPaymentModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <h2>Neue Zahlungsmethode hinzufügen</h2>
             
             <div class="payment-methods">
-                <button class="payment-btn" onclick="selectNewPaymentMethod('paypal')" id="newPaypalBtn">💳 PayPal</button>
-                <button class="payment-btn" onclick="selectNewPaymentMethod('sepa')" id="newSepaBtn">🏦 Lastschrift</button>
-                <button class="payment-btn" onclick="selectNewPaymentMethod('card')" id="newCardBtn">💳 Kreditkarte</button>
+                <button class="payment-btn" onclick="App.selectNewPaymentMethod('paypal')" id="newPaypalBtn">💳 PayPal</button>
+                <button class="payment-btn" onclick="App.selectNewPaymentMethod('sepa')" id="newSepaBtn">🏦 Lastschrift</button>
+                <button class="payment-btn" onclick="App.selectNewPaymentMethod('card')" id="newCardBtn">💳 Kreditkarte</button>
             </div>
             
             <div id="newPaymentForms"></div>
@@ -343,7 +358,7 @@
     <!-- Legal Modal -->
     <div id="legalModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <div id="legalContent"></div>
         </div>
     </div>
@@ -351,9 +366,9 @@
     <!-- Master Login Modal -->
     <div id="masterLoginModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <h2 style="color: #ff6b35; margin-bottom: 2rem;">🔐 KlarKRAFT Mitarbeiter Login</h2>
-            <form id="masterLoginForm" onsubmit="handleMasterLogin(event)">
+            <form id="masterLoginForm">
                 <div class="form-group">
                     <label for="masterLoginEmail">Mitarbeiter E-Mail:</label>
                     <input type="email" id="masterLoginEmail" name="masterLoginEmail" required placeholder="mitarbeiter@klarkraft.de">
@@ -372,13 +387,13 @@
             <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; font-size: 0.9rem;">
                 <h4 style="color: #ff6b35; margin-bottom: 0.5rem;">Demo-Zugangsdaten:</h4>
                 <div style="display: grid; gap: 0.5rem;">
-                    <button type="button" class="btn" onclick="quickMasterLogin('manager')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                    <button type="button" class="btn" onclick="Auth.quickMasterLogin('manager')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
                         👔 Manager: manager@klarkraft.de / manager123 / KK-2025
                     </button>
-                    <button type="button" class="btn" onclick="quickMasterLogin('support')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                    <button type="button" class="btn" onclick="Auth.quickMasterLogin('support')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
                         🎧 Support: support@klarkraft.de / support123 / KK-2025
                     </button>
-                    <button type="button" class="btn" onclick="quickMasterLogin('admin')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                    <button type="button" class="btn" onclick="Auth.quickMasterLogin('admin')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
                         ⚙️ Admin: admin@klarkraft.de / admin123 / KK-2025
                     </button>
                 </div>
@@ -389,14 +404,16 @@
     <!-- New Orders Modal (for Masters) -->
     <div id="newOrdersModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <h2>📦 Neue Bestellungen</h2>
             <div id="newOrdersList"></div>
         </div>
     </div>
+
+    <!-- Master Dashboard Modal -->
     <div id="masterDashboardModal" class="modal">
         <div class="modal-content" style="max-width: 1200px; max-height: 90vh;">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" onclick="App.closeModal()">&times;</span>
             <div id="masterDashboardContent">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #d7ccc8;">
                     <div>
@@ -410,11 +427,11 @@
                 </div>
 
                 <div class="auth-tabs">
-                    <button class="auth-tab active" onclick="switchMasterTab('overview')">📊 Übersicht</button>
-                    <button class="auth-tab" onclick="switchMasterTab('customers')">👥 Kunden</button>
-                    <button class="auth-tab" onclick="switchMasterTab('orders')">📦 Bestellungen</button>
-                    <button class="auth-tab" onclick="switchMasterTab('analytics')">📈 Analytik</button>
-                    <button class="auth-tab" onclick="switchMasterTab('settings')" id="settingsTab">⚙️ Einstellungen</button>
+                    <button class="auth-tab active" onclick="MasterDashboard.switchTab('overview')">📊 Übersicht</button>
+                    <button class="auth-tab" onclick="MasterDashboard.switchTab('customers')">👥 Kunden</button>
+                    <button class="auth-tab" onclick="MasterDashboard.switchTab('orders')">📦 Bestellungen</button>
+                    <button class="auth-tab" onclick="MasterDashboard.switchTab('analytics')">📈 Analytik</button>
+                    <button class="auth-tab" onclick="MasterDashboard.switchTab('settings')" id="settingsTab">⚙️ Einstellungen</button>
                 </div>
                 
                 <!-- Overview Tab -->
@@ -438,7 +455,7 @@
                         <h3 style="color: #ff6b35;">👥 Kundenverwaltung</h3>
                         <div>
                             <input type="text" id="customerSearch" placeholder="Kunde suchen..." style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
-                            <button class="btn" onclick="exportCustomersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
+                            <button class="btn" onclick="MasterDashboard.exportCustomersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
                         </div>
                     </div>
                     <div id="masterCustomersList"></div>
@@ -456,7 +473,7 @@
                                 <option value="completed">Geliefert</option>
                                 <option value="cancelled">Storniert</option>
                             </select>
-                            <button class="btn" onclick="exportOrdersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
+                            <button class="btn" onclick="MasterDashboard.exportOrdersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
                         </div>
                     </div>
                     <div id="masterOrdersList"></div>
@@ -482,7 +499,7 @@
                                     </div>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
+                                    <input type="checkbox" id="demoModeToggle" onchange="MasterDashboard.toggleDemoMode()">
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
@@ -491,12 +508,12 @@
                         
                         <div style="margin-bottom: 2rem;">
                             <h4 style="color: #8d6e63; margin-bottom: 1rem;">🧹 Datenbereinigung</h4>
-                            <button class="btn" onclick="clearTestData()" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 1rem;">Test-Daten löschen</button>
-                            <button class="btn" onclick="resetAllData()" style="background: #ff5722; width: auto; padding: 0.5rem 1rem;">Alle Daten zurücksetzen</button>
+                            <button class="btn" onclick="MasterDashboard.clearTestData()" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 1rem;">Test-Daten löschen</button>
+                            <button class="btn" onclick="MasterDashboard.resetAllData()" style="background: #ff5722; width: auto; padding: 0.5rem 1rem;">Alle Daten zurücksetzen</button>
                         </div>
                         <div style="margin-bottom: 2rem;">
                             <h4 style="color: #8d6e63; margin-bottom: 1rem;">📊 Datenexport</h4>
-                            <button class="btn" onclick="exportAllData()" style="width: auto; padding: 0.5rem 1rem;">Vollständiger Export</button>
+                            <button class="btn" onclick="MasterDashboard.exportAllData()" style="width: auto; padding: 0.5rem 1rem;">Vollständiger Export</button>
                         </div>
                         <div>
                             <h4 style="color: #8d6e63; margin-bottom: 1rem;">👥 Mitarbeiter-Logs</h4>
@@ -508,6 +525,36 @@
         </div>
     </div>
 
-    <script type="module" src="scripts/app.js"></script>
+    <!-- ========== SCRIPTS ========== -->
+    
+    <!-- Core scripts in dependency order -->
+    <script src="scripts/config.js"></script>
+    <script src="scripts/utils.js"></script>
+    <script src="scripts/storage.js"></script>
+    
+    <!-- Business logic modules -->
+    <script src="scripts/products.js"></script>
+    <script src="scripts/auth.js"></script>
+    <script src="scripts/cart.js"></script>
+    <script src="scripts/master.js"></script>
+    
+    <!-- Main application controller -->
+    <script src="scripts/app.js"></script>
+    
+    <!-- Initialize application -->
+    <script>
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 KlarKRAFT Shop wird initialisiert...');
+            App.init();
+        });
+        
+        // Modal close on background click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                App.closeModal();
+            }
+        };
+    </script>
 </body>
 </html>
