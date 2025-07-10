@@ -710,6 +710,404 @@ export class ProductManager {
     }
 }
 
+    // Ergänzungen für scripts/products.js - Diese Methoden zur ProductManager Klasse hinzufügen:
+    
+    /**
+     * Session wiederherstellen (für Konsistenz)
+     */
+    restoreSession() {
+        try {
+            // Products sind statisch, aber wir können Filter/Suchzustände wiederherstellen
+            this.renderProducts();
+            console.log('✅ Products-Manager Session wiederhergestellt');
+            return true;
+        } catch (error) {
+            console.error('❌ Fehler beim Wiederherstellen der Products-Session:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Produkt hinzufügen - sicherere Implementierung
+     */
+    addToCart(productId, quantity = 1) {
+        try {
+            const product = this.getProductById(productId);
+            if (!product) {
+                UIUtils.showNotification('❌ Produkt nicht gefunden', 'error');
+                return;
+            }
+    
+            // Use cart manager if available
+            if (window.cartManager && window.cartManager.addProduct) {
+                window.cartManager.addProduct(product, quantity);
+            } else {
+                // Fallback: Show notification that cart is not ready
+                UIUtils.showNotification('⚠️ Warenkorb wird geladen...', 'warning');
+                
+                // Retry after short delay
+                setTimeout(() => {
+                    if (window.cartManager && window.cartManager.addProduct) {
+                        window.cartManager.addProduct(product, quantity);
+                    } else {
+                        UIUtils.showNotification('❌ Warenkorb nicht verfügbar', 'error');
+                    }
+                }, 1000);
+            }
+    
+            // Track analytics
+            this.trackAddToCart(product, quantity);
+    
+        } catch (error) {
+            ErrorHandler.handleAsyncError(error, 'ProductManager.addToCart');
+        }
+    }
+    
+    /**
+     * Produkt mit gewählter Menge zum Warenkorb hinzufügen - korrigierte Version
+     */
+    addToCartWithQuantity(productId) {
+        const quantityInput = document.getElementById('detailQuantity');
+        const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+        
+        this.addToCart(productId, quantity);
+        UIUtils.hideModal('productModal');
+    }
+    
+    /**
+     * Globale Methoden für HTML onclick Handler einrichten
+     */
+    setupProductGlobalMethods() {
+        // Quantity change function für Detail Modal
+        window.changeDetailQuantity = (change) => {
+            const input = document.getElementById('detailQuantity');
+            if (input) {
+                const currentValue = parseInt(input.value) || 1;
+                const newValue = Math.max(1, Math.min(10, currentValue + change));
+                input.value = newValue;
+            }
+        };
+        
+        // Product detail with quantity
+        window.addToCartWithQuantity = (productId) => {
+            this.addToCartWithQuantity(productId);
+        };
+    }
+    
+    /**
+     * Initialisierung erweitern
+     */
+    init() {
+        this.addEventListeners();
+        this.renderProducts();
+        this.setupSearch();
+        this.setupFilters();
+        this.setupProductGlobalMethods(); // Neue Methode
+        
+        console.log('📦 ProductManager initialisiert');
+    }
+    
+    /**
+     * Produktdetails anzeigen - verbesserte Version
+     */
+    showProductDetail(productId) {
+        try {
+            const product = this.getProductById(productId);
+            if (!product) {
+                UIUtils.showNotification('❌ Produkt nicht gefunden', 'error');
+                return;
+            }
+    
+            const detailsContainer = document.getElementById('productDetails');
+            if (!detailsContainer) {
+                console.warn('Product details container not found');
+                return;
+            }
+    
+            detailsContainer.innerHTML = this.generateProductDetailHTML(product);
+            UIUtils.showModal('productModal');
+    
+            // Track analytics
+            this.trackProductView(product);
+    
+            // Setup quantity controls after modal is shown
+            setTimeout(() => {
+                this.setupQuantityControls();
+            }, 100);
+    
+        } catch (error) {
+            ErrorHandler.handleAsyncError(error, 'ProductManager.showProductDetail');
+        }
+    }
+    
+    /**
+     * Quantity Controls nach Modal-Anzeige einrichten
+     */
+    setupQuantityControls() {
+        const quantityInput = document.getElementById('detailQuantity');
+        if (quantityInput) {
+            // Ensure value is valid
+            if (!quantityInput.value || isNaN(quantityInput.value)) {
+                quantityInput.value = 1;
+            }
+            
+            // Add input validation
+            quantityInput.addEventListener('input', (e) => {
+                let value = parseInt(e.target.value);
+                if (isNaN(value) || value < 1) value = 1;
+                if (value > 10) value = 10;
+                e.target.value = value;
+            });
+            
+            quantityInput.addEventListener('blur', (e) => {
+                if (!e.target.value) e.target.value = 1;
+            });
+        }
+    }
+    
+    /**
+     * Produktdetail HTML generieren - korrigierte Version
+     */
+    generateProductDetailHTML(product) {
+        const relatedProducts = this.getRelatedProducts(product);
+        
+        return `
+            <div class="product-detail">
+                <div class="product-detail-header">
+                    <h2>${product.name}</h2>
+                    ${product.badge ? `<span class="product-detail-badge">${product.badge}</span>` : ''}
+                </div>
+                
+                <div class="product-detail-image">
+                    ${product.image}
+                </div>
+                
+                <div class="product-detail-price">${Formatter.formatPrice(product.price)}</div>
+                
+                <div class="product-detail-description">
+                    ${product.details || product.description}
+                </div>
+    
+                ${product.tags && product.tags.length > 0 ? `
+                    <div class="product-tags" style="margin: 1rem 0;">
+                        <strong>Eigenschaften:</strong>
+                        ${product.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                ` : ''}
+    
+                <div class="product-detail-actions">
+                    <div class="quantity-selector" style="margin-bottom: 1rem;">
+                        <label for="detailQuantity">Menge:</label>
+                        <div class="quantity-controls">
+                            <button class="quantity-btn" onclick="changeDetailQuantity(-1)" type="button">-</button>
+                            <input type="number" id="detailQuantity" value="1" min="1" max="10" style="width: 60px; text-align: center;">
+                            <button class="quantity-btn" onclick="changeDetailQuantity(1)" type="button">+</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="addToCartWithQuantity(${product.id})" style="width: 100%; margin-bottom: 1rem;" type="button">
+                        In den Warenkorb
+                    </button>
+                    
+                    <div class="product-actions-secondary">
+                        <button class="btn btn-outline" onclick="window.productManager.shareProduct(${product.id})" type="button">
+                            📤 Teilen
+                        </button>
+                        <button class="btn btn-outline" onclick="window.productManager.addToWishlist(${product.id})" type="button">
+                            ❤️ Merken
+                        </button>
+                    </div>
+                </div>
+    
+                ${relatedProducts.length > 0 ? `
+                    <div class="related-products" style="margin-top: 2rem; border-top: 2px solid #d7ccc8; padding-top: 2rem;">
+                        <h3 style="color: #ff6b35; margin-bottom: 1rem;">Ähnliche Produkte</h3>
+                        <div class="related-products-grid">
+                            ${relatedProducts.map(rp => `
+                                <div class="related-product-card" onclick="window.productManager.showProductDetail(${rp.id})">
+                                    <div class="related-product-image">${rp.image}</div>
+                                    <div class="related-product-name">${rp.name}</div>
+                                    <div class="related-product-price">${Formatter.formatPrice(rp.price)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+    
+            <style>
+                .product-tags .tag {
+                    display: inline-block;
+                    background: #ff6b35;
+                    color: white;
+                    padding: 2px 8px;
+                    margin: 2px;
+                    border-radius: 12px;
+                    font-size: 0.8rem;
+                }
+                
+                .related-products-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    gap: 1rem;
+                }
+                
+                .related-product-card {
+                    text-align: center;
+                    padding: 1rem;
+                    border: 1px solid #d7ccc8;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                
+                .related-product-card:hover {
+                    border-color: #ff6b35;
+                    transform: translateY(-2px);
+                }
+                
+                .related-product-image {
+                    font-size: 2rem;
+                    margin-bottom: 0.5rem;
+                }
+                
+                .related-product-name {
+                    font-size: 0.9rem;
+                    font-weight: bold;
+                    color: #5d4037;
+                    margin-bottom: 0.25rem;
+                }
+                
+                .related-product-price {
+                    color: #ff6b35;
+                    font-weight: bold;
+                }
+                
+                .btn-outline {
+                    background: transparent;
+                    border: 2px solid #ff6b35;
+                    color: #ff6b35;
+                }
+                
+                .btn-outline:hover {
+                    background: #ff6b35;
+                    color: white;
+                }
+                
+                .quantity-controls {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-top: 0.5rem;
+                }
+                
+                .quantity-btn {
+                    background: #8d6e63;
+                    color: white;
+                    border: none;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    font-size: 18px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                }
+                
+                .quantity-btn:hover {
+                    background: #5d4037;
+                }
+            </style>
+        `;
+    }
+    
+    /**
+     * Ähnliche Produkte finden - verbesserte Version
+     */
+    getRelatedProducts(product, count = 3) {
+        return this.products
+            .filter(p => p.id !== product.id && p.category === product.category)
+            .sort(() => Math.random() - 0.5) // Zufällige Reihenfolge
+            .slice(0, count);
+    }
+    
+    /**
+     * Produkt teilen - verbesserte Version
+     */
+    shareProduct(productId) {
+        const product = this.getProductById(productId);
+        if (!product) return;
+    
+        const shareData = {
+            title: `${product.name} - KlarKRAFT`,
+            text: product.description,
+            url: `${window.location.origin}${window.location.pathname}?product=${productId}`
+        };
+    
+        if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+            navigator.share(shareData).catch(error => {
+                console.log('Share failed:', error);
+                this.fallbackShare(product, shareData.url);
+            });
+        } else {
+            this.fallbackShare(product, shareData.url);
+        }
+    
+        this.trackShare(product);
+    }
+    
+    /**
+     * Fallback für Teilen-Funktionalität
+     */
+    fallbackShare(product, url) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => {
+                UIUtils.showNotification('🔗 Link kopiert!', 'success');
+            }).catch(() => {
+                this.showShareDialog(product, url);
+            });
+        } else {
+            this.showShareDialog(product, url);
+        }
+    }
+    
+    /**
+     * Share Dialog anzeigen
+     */
+    showShareDialog(product, url) {
+        const shareText = `Schau dir das an: ${product.name} bei KlarKRAFT\n${url}`;
+        
+        if (prompt('Teilen Sie diesen Link:', shareText)) {
+            UIUtils.showNotification('📤 Link bereit zum Teilen!', 'info');
+        }
+    }
+    
+    /**
+     * Zur Wunschliste hinzufügen - erweiterte Version
+     */
+    addToWishlist(productId) {
+        const product = this.getProductById(productId);
+        if (!product) return;
+        
+        // TODO: Implement proper wishlist functionality
+        // For now, just show notification
+        UIUtils.showNotification(`❤️ ${product.name} zur Wunschliste hinzugefügt!`, 'success');
+        this.trackWishlist(productId);
+        
+        // Could store in localStorage for simple implementation
+        try {
+            const wishlist = JSON.parse(localStorage.getItem('klarkraft_wishlist') || '[]');
+            if (!wishlist.includes(productId)) {
+                wishlist.push(productId);
+                localStorage.setItem('klarkraft_wishlist', JSON.stringify(wishlist));
+            }
+        } catch (error) {
+            console.warn('Could not save to wishlist:', error);
+        }
+    }
+
 // Global functions for HTML onclick handlers
 window.changeDetailQuantity = function(change) {
     const input = document.getElementById('detailQuantity');
