@@ -42,37 +42,39 @@ class KlarKraftApp {
         try {
             console.log('🚀 KlarKRAFT Shop wird initialisiert...');
             
-            // 1. Demo-Modus initialisieren
+            // 1. Demo-Modus ZUERST
             this.initializeDemoMode();
             
-            // 2. Module registrieren und verfügbar machen
+            // 2. Module registrieren
             this.registerModules();
             
-            // 3. WICHTIG: Globale Methoden für HTML SOFORT verfügbar machen
+            // 3. SOFORT globale Methoden verfügbar machen
             this.setupGlobalMethods();
             
-            // 4. Sessions wiederherstellen
+            // 4. Sessions wiederherstellen (nach Module sind verfügbar)
             await this.restoreSessions();
             
-            // 5. Event-Listener für Formulare
-            this.setupEventListeners();
-            
-            // 6. Demo-Daten erstellen
+            // 5. Demo-Daten erstellen (nach Sessions)
             this.createDemoData();
             
-            // 7. UI initialisieren
+            // 6. Event-Listener (nach alle Daten geladen)
+            this.setupEventListeners();
+            
+            // 7. UI initialisieren (am Ende)
             this.initializeUI();
             
-            // 8. Module-übergreifende Events verbinden
+            // 8. Module-Events verbinden (ganz am Ende)
             this.connectModuleEvents();
             
             console.log('🎉 KlarKRAFT Shop erfolgreich initialisiert!');
             this.isInitialized = true;
             
-            // Emit app ready event
-            this.eventTarget.dispatchEvent(new CustomEvent('appReady'));
+            // Success notification
+            UIUtils.showNotification('🎉 KlarKRAFT Shop erfolgreich geladen!', 'success', 2000);
             
         } catch (error) {
+            console.error('❌ Kritischer Fehler beim Initialisieren:', error);
+            UIUtils.showNotification('❌ Fehler beim Laden der App. Bitte Seite neu laden.', 'error', 10000);
             ErrorHandler.handleAsyncError(error, 'KlarKraftApp.init');
         }
     }
