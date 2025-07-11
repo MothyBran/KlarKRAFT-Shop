@@ -1282,7 +1282,6 @@
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-       color: black !important;
 }
 
 .customer-order-card::before {
@@ -1329,7 +1328,6 @@
 /* Order Card Content */
 .order-card-content {
     margin-bottom: 1rem;
-            color: black !important;
 }
 
 /* Order Card Actions */
@@ -1339,7 +1337,6 @@
     flex-wrap: wrap;
     padding-top: 1rem;
     border-top: 1px solid #f0f0f0;
-    color: black !important;
 }
 
 .order-card-actions .action-btn {
@@ -1375,7 +1372,6 @@
     width: 2px;
     height: calc(100% + 1.5rem);
     background: #e0e0e0;
-            color: black !important;
 }
 
 .customer-timeline-item:last-child::before {
@@ -1685,4 +1681,36 @@
 .order-detail-card:hover {
     border-color: #ff6b35;
     box-shadow: 0 4px 15px rgba(255,107,53,0.1);
+}
+
+/* Helle Hintergründe erhalten schwarze Textfarbe */
+*[style*="background: white"],
+*[style*="background-color: white"],
+*[style*="background: #fff"],
+*[style*="background-color: #fff"],
+*[style*="background: #f8f5f3"],
+*[style*="background-color: #f8f5f3"],
+*[style*="background: rgba(255,255,255,0.9)"],
+*[style*="background-color: rgba(255,255,255,0.9)"],
+*[style*="background: rgba(255,255,255,0.95)"],
+*[style*="background-color: rgba(255,255,255,0.95)"],
+*[style*="background: rgba(255,255,255,0.7)"],
+*[style*="background-color: rgba(255,255,255,0.7)"],
+*[style*="background: rgba(255,255,255,0.2)"],
+*[style*="background-color: rgba(255,255,255,0.2)"],
+*[style*="background: rgba(255,255,255,0.3)"],
+*[style*="background-color: rgba(255,255,255,0.3)"],
+*[style*="background: #f5f5f5"],
+*[style*="background-color: #f5f5f5"],
+*[style*="background: #d7ccc8"],
+*[style*="background-color: #d7ccc8"],
+*[style*="background: #e0e0e0"],
+*[style*="background-color: #e0e0e0"],
+*[style*="background: #f4e6d7"],
+*[style*="background-color: #f4e6d7"],
+*[style*="background: #e8d5c8"],
+*[style*="background-color: #e8d5c8"],
+*[style*="background: #bcaaa4"],
+*[style*="background-color: #bcaaa4"] {
+    color: black !important;
 }
