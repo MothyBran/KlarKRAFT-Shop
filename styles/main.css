@@ -1337,6 +1337,7 @@
     flex-wrap: wrap;
     padding-top: 1rem;
     border-top: 1px solid #f0f0f0;
+    color: black !important;
 }
 
 .order-card-actions .action-btn {
