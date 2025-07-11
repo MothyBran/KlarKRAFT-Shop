@@ -3448,3 +3448,618 @@ function showEmailPreview(email, subject, body, mailtoLink) {
                 </div>
             `;
         }
+// Erweiterte Bestellhistorie-Funktion mit anklickbaren Bestellungen
+function loadOrderHistory() {
+    if (!currentUser) return;
+    
+    const userOrders = orders.filter(order => order.customerId === currentUser.customerId);
+    const ordersList = document.getElementById('orderHistoryList');
+    
+    if (userOrders.length === 0) {
+        ordersList.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #8d6e63;">
+                <h4>📦 Noch keine Bestellungen</h4>
+                <p>Sie haben noch keine Bestellungen aufgegeben.</p>
+                <button class="btn" onclick="showProducts()" style="width: auto; margin-top: 1rem;">
+                    🛍️ Jetzt einkaufen
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    ordersList.innerHTML = `
+        <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+            <h4 style="color: #ff6b35; margin-bottom: 0.5rem;">📊 Ihre Bestellübersicht</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; text-align: center;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff6b35;">${userOrders.length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63;">Gesamtbestellungen</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #4caf50;">${userOrders.filter(o => o.status === 'completed').length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63;">Abgeschlossen</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">${userOrders.filter(o => o.status === 'pending' || o.status === 'processing').length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63;">In Bearbeitung</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff6b35;">€${userOrders.reduce((sum, order) => sum + order.total, 0).toFixed(2)}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63;">Gesamtumsatz</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+            <h4 style="color: #8d6e63;">📋 Ihre Bestellungen (klicken für Details)</h4>
+        </div>
+        
+        ${userOrders
+            .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+            .map(order => createCustomerOrderCard(order))
+            .join('')}
+    `;
+}
+
+function createCustomerOrderCard(order) {
+    const statusInfo = getStatusInfo(order.status);
+    const isActive = order.status === 'pending' || order.status === 'processing';
+    const canCancel = order.status === 'pending' || order.status === 'processing';
+    
+    return `
+        <div class="customer-order-card" onclick="showCustomerOrderDetails('${order.orderId}')" style="cursor: pointer;">
+            <div class="order-card-header">
+                <div>
+                    <h4 style="margin: 0; color: #5d4037;">Bestellung #${order.orderId}</h4>
+                    <p style="margin: 0.25rem 0; color: #8d6e63; font-size: 0.9rem;">
+                        📅 ${new Date(order.orderDate).toLocaleDateString('de-DE', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.3rem; font-weight: bold; color: #ff6b35;">€${order.total.toFixed(2)}</div>
+                    <span class="order-status status-${order.status}">${statusInfo.text}</span>
+                </div>
+            </div>
+            
+            <div class="order-card-content">
+                <div style="margin: 1rem 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="font-weight: bold;">📦 Artikel:</span>
+                        <span>${order.items.length} Produkt${order.items.length !== 1 ? 'e' : ''}</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: #8d6e63;">
+                        ${order.items.slice(0, 2).map(item => `${item.name} (${item.quantity}x)`).join(', ')}
+                        ${order.items.length > 2 ? ` und ${order.items.length - 2} weitere...` : ''}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem; color: #8d6e63;">
+                    <div>
+                        <strong>💳 Bezahlung:</strong><br>
+                        ${order.paymentMethod}
+                    </div>
+                    <div>
+                        <strong>📋 Tracking:</strong><br>
+                        ${order.trackingNumber}
+                    </div>
+                </div>
+                
+                ${isActive ? `
+                    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(255,107,53,0.1); border-radius: 8px; border-left: 4px solid #ff6b35;">
+                        <div style="font-size: 0.9rem; color: #ff6b35; font-weight: bold;">
+                            ${statusInfo.icon} ${statusInfo.description}
+                        </div>
+                        ${order.status === 'processing' && order.processedBy ? `
+                            <div style="font-size: 0.8rem; color: #8d6e63; margin-top: 0.25rem;">
+                                Bearbeitet von: ${order.processedBy}
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+                
+                ${order.status === 'cancelled' ? `
+                    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(158,158,158,0.1); border-radius: 8px; border-left: 4px solid #9e9e9e;">
+                        <div style="font-size: 0.9rem; color: #9e9e9e; font-weight: bold;">
+                            ❌ Bestellung storniert
+                        </div>
+                        ${order.cancelReason ? `
+                            <div style="font-size: 0.8rem; color: #8d6e63; margin-top: 0.25rem;">
+                                Grund: ${getReasonText(order.cancelReason)}
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="order-card-actions" onclick="event.stopPropagation();">
+                <button class="action-btn view" onclick="showCustomerOrderDetails('${order.orderId}')" style="background: #2196f3;">
+                    👁️ Details ansehen
+                </button>
+                ${canCancel ? `
+                    <button class="action-btn delete" onclick="requestOrderCancellation('${order.orderId}')" style="background: #f44336;">
+                        ❌ Stornieren
+                    </button>
+                ` : ''}
+                ${order.status === 'completed' ? `
+                    <button class="action-btn" onclick="reorderItems('${order.orderId}')" style="background: #4caf50;">
+                        🔄 Erneut bestellen
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function getStatusInfo(status) {
+    const statusMap = {
+        'pending': {
+            text: 'In Bearbeitung',
+            icon: '⏳',
+            description: 'Ihre Bestellung wird bearbeitet und für den Versand vorbereitet.'
+        },
+        'processing': {
+            text: 'Wird versendet',
+            icon: '📦',
+            description: 'Ihre Bestellung wird gerade für den Versand vorbereitet.'
+        },
+        'completed': {
+            text: 'Geliefert',
+            icon: '✅',
+            description: 'Ihre Bestellung wurde erfolgreich zugestellt.'
+        },
+        'cancelled': {
+            text: 'Storniert',
+            icon: '❌',
+            description: 'Diese Bestellung wurde storniert.'
+        }
+    };
+    return statusMap[status] || statusMap['pending'];
+}
+
+function getReasonText(reason) {
+    const reasonMap = {
+        'customer_request': 'Kundenwunsch',
+        'payment_failed': 'Zahlungsprobleme',
+        'out_of_stock': 'Artikel nicht verfügbar',
+        'quality_issues': 'Qualitätsprobleme',
+        'shipping_issues': 'Versandprobleme',
+        'system_error': 'Systemfehler',
+        'other': 'Sonstige Gründe'
+    };
+    return reasonMap[reason] || reason;
+}
+
+// Kunden-Bestelldetails Modal
+function showCustomerOrderDetails(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
+    const statusInfo = getStatusInfo(order.status);
+    const canCancel = order.status === 'pending' || order.status === 'processing';
+    
+    const modalHtml = `
+        <div id="customerOrderDetailsModal" class="modal" style="display: block;">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+                <span class="close" onclick="closeCustomerOrderDetails()">&times;</span>
+                
+                <!-- Header -->
+                <div style="text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #8d6e63, #a1887f); color: white; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
+                    <h2 style="margin: 0; color: white;">📦 Bestellung #${order.orderId}</h2>
+                    <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+                        Bestellt am ${new Date(order.orderDate).toLocaleDateString('de-DE', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                    </p>
+                    <div style="margin-top: 1rem;">
+                        <span class="order-status status-${order.status}" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                            ${statusInfo.icon} ${statusInfo.text}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Status-Informationen -->
+                <div style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(255,107,53,0.1); border-radius: 15px; border-left: 5px solid #ff6b35;">
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem;">📋 Bestellstatus</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <strong>Aktueller Status:</strong><br>
+                            <span style="color: #ff6b35;">${statusInfo.description}</span>
+                        </div>
+                        <div>
+                            <strong>Tracking-Nummer:</strong><br>
+                            <code style="background: rgba(255,255,255,0.7); padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: bold;">${order.trackingNumber}</code>
+                        </div>
+                    </div>
+                    ${order.status === 'processing' && order.processedBy ? `
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,107,53,0.3);">
+                            <strong>Bearbeitet von:</strong> ${order.processedBy}<br>
+                            <small style="color: #8d6e63;">am ${new Date(order.processedAt).toLocaleString('de-DE')}</small>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Artikel-Details -->
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: #8d6e63; margin-bottom: 1rem;">🛍️ Bestellte Artikel</h3>
+                    <div style="background: rgba(255,255,255,0.9); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        ${order.items.map(item => `
+                            <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 1rem; align-items: center; padding: 1rem; border-bottom: 1px solid #f0f0f0;">
+                                <div style="font-size: 2rem;">
+                                    ${getProductEmoji(item.productId)}
+                                </div>
+                                <div>
+                                    <strong style="color: #5d4037;">${item.name}</strong><br>
+                                    <small style="color: #8d6e63;">€${item.price.toFixed(2)} pro Stück</small>
+                                </div>
+                                <div style="text-align: center;">
+                                    <span style="background: #f5f5f5; padding: 0.25rem 0.5rem; border-radius: 15px; font-weight: bold;">
+                                        ${item.quantity}x
+                                    </span>
+                                </div>
+                                <div style="text-align: right; font-weight: bold; color: #ff6b35;">
+                                    €${item.total.toFixed(2)}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Lieferung & Rechnung -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <!-- Lieferadresse -->
+                    <div>
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">🏠 Lieferadresse</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1.5rem; border-radius: 10px; border: 2px solid #d7ccc8;">
+                            <address style="font-style: normal; line-height: 1.5;">
+                                <strong>${order.customerName}</strong><br>
+                                ${order.shippingAddress.address}<br>
+                                ${order.shippingAddress.zip} ${order.shippingAddress.city}<br>
+                                ${order.shippingAddress.country}
+                            </address>
+                        </div>
+                    </div>
+
+                    <!-- Rechnungsdetails -->
+                    <div>
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">💰 Rechnungsdetails</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1.5rem; border-radius: 10px; border: 2px solid #d7ccc8;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Zwischensumme:</span>
+                                <span>€${subtotal.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Versandkosten:</span>
+                                <span style="color: ${order.shippingCost > 0 ? '#8d6e63' : '#4caf50'};">
+                                    ${order.shippingCost > 0 ? '€' + order.shippingCost.toFixed(2) : '🆓 KOSTENLOS'}
+                                </span>
+                            </div>
+                            <hr style="margin: 1rem 0;">
+                            <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; color: #ff6b35;">
+                                <span>Gesamtsumme:</span>
+                                <span>€${order.total.toFixed(2)}</span>
+                            </div>
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.9rem; color: #8d6e63;">
+                                <strong>💳 Bezahlung:</strong> ${order.paymentMethod}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bestellverlauf -->
+                ${getCustomerOrderTimeline(order)}
+
+                <!-- Aktionen -->
+                <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; justify-content: center;">
+                    ${canCancel ? `
+                        <button class="btn" onclick="requestOrderCancellation('${order.orderId}'); closeCustomerOrderDetails();" style="background: #f44336; width: auto; padding: 0.8rem 1.5rem;">
+                            ❌ Bestellung stornieren
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status === 'completed' ? `
+                        <button class="btn" onclick="reorderItems('${order.orderId}'); closeCustomerOrderDetails();" style="background: #4caf50; width: auto; padding: 0.8rem 1.5rem;">
+                            🔄 Erneut bestellen
+                        </button>
+                    ` : ''}
+                    
+                    <button class="btn" onclick="downloadOrderReceipt('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.8rem 1.5rem;">
+                        📄 Rechnung herunterladen
+                    </button>
+                    
+                    <button class="btn" onclick="closeCustomerOrderDetails()" style="background: #9e9e9e; width: auto; padding: 0.8rem 1.5rem;">
+                        Schließen
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function getProductEmoji(productId) {
+    const product = products.find(p => p.id === productId);
+    return product ? product.image : '📦';
+}
+
+function getCustomerOrderTimeline(order) {
+    return `
+        <div style="margin-bottom: 2rem;">
+            <h3 style="color: #8d6e63; margin-bottom: 1rem;">⏱️ Bestellverlauf</h3>
+            <div style="background: rgba(255,255,255,0.7); padding: 1.5rem; border-radius: 10px; border: 2px solid #d7ccc8;">
+                <div class="customer-timeline">
+                    <div class="customer-timeline-item completed">
+                        <div class="timeline-icon">📋</div>
+                        <div class="timeline-content">
+                            <strong>Bestellung eingegangen</strong>
+                            <div class="timeline-date">${new Date(order.orderDate).toLocaleString('de-DE')}</div>
+                        </div>
+                    </div>
+                    
+                    ${order.processedBy ? `
+                        <div class="customer-timeline-item completed">
+                            <div class="timeline-icon">👤</div>
+                            <div class="timeline-content">
+                                <strong>Bearbeitung begonnen</strong>
+                                <div class="timeline-date">${new Date(order.processedAt).toLocaleString('de-DE')}</div>
+                                <div class="timeline-detail">von ${order.processedBy}</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="customer-timeline-item ${order.status === 'processing' || order.status === 'completed' ? 'completed' : order.status === 'cancelled' ? 'cancelled' : 'pending'}">
+                        <div class="timeline-icon">
+                            ${order.status === 'completed' ? '📦' : order.status === 'cancelled' ? '❌' : order.status === 'processing' ? '⚙️' : '⏳'}
+                        </div>
+                        <div class="timeline-content">
+                            <strong>${getStatusInfo(order.status).text}</strong>
+                            ${order.statusUpdatedAt ? `
+                                <div class="timeline-date">${new Date(order.statusUpdatedAt).toLocaleString('de-DE')}</div>
+                            ` : ''}
+                            ${order.status === 'cancelled' && order.cancelReason ? `
+                                <div class="timeline-detail">Grund: ${getReasonText(order.cancelReason)}</div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    ${order.status !== 'cancelled' && order.status !== 'completed' ? `
+                        <div class="customer-timeline-item pending">
+                            <div class="timeline-icon">🚚</div>
+                            <div class="timeline-content">
+                                <strong>Zustellung</strong>
+                                <div class="timeline-detail">Erfolgt nach Versand</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Neue Funktionen für Kundenaktionen
+function requestOrderCancellation(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    if (order.status === 'cancelled') {
+        showNotification('⚠️ Diese Bestellung ist bereits storniert.');
+        return;
+    }
+
+    if (order.status === 'completed') {
+        showNotification('⚠️ Bereits gelieferte Bestellungen können nicht storniert werden.');
+        return;
+    }
+
+    const reason = prompt(`🤔 Warum möchten Sie Bestellung #${order.orderId} stornieren?\n\nBitte geben Sie einen kurzen Grund an:`, '');
+    
+    if (!reason) return;
+
+    if (confirm(`❌ Möchten Sie Bestellung #${order.orderId} wirklich stornieren?\n\nGrund: ${reason}\n\nDie Stornierung wird an unser Team weitergeleitet.`)) {
+        // Stornierungsanfrage erstellen
+        const orderIndex = orders.findIndex(o => o.orderId === orderId);
+        orders[orderIndex].customerCancellationRequest = {
+            reason: reason,
+            requestedAt: new Date().toISOString(),
+            requestedBy: currentUser.name
+        };
+        
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        
+        logActivity('Customer Cancellation Request', `Customer ${currentUser.name} requested cancellation for order ${orderId}. Reason: ${reason}`);
+        showNotification(`📨 Stornierungsanfrage gesendet! Wir bearbeiten Ihre Anfrage schnellstmöglich.\n\nBestellung: #${orderId}\nGrund: ${reason}`);
+        
+        // E-Mail an Support senden (simuliert)
+        const mailtoLink = `mailto:service@klarkraft.de?subject=Stornierungsanfrage - Bestellung ${orderId}&body=Sehr geehrtes KlarKRAFT Team,%0A%0AHiermit beantrage ich die Stornierung meiner Bestellung:%0A%0ABestellnummer: ${orderId}%0AKunde: ${currentUser.name} (${currentUser.email})%0AGrund: ${reason}%0A%0ABitte bestätigen Sie die Stornierung.%0A%0AMit freundlichen Grüßen%0A${currentUser.name}`;
+        
+        setTimeout(() => {
+            if (confirm('📧 Möchten Sie eine E-Mail an unseren Support senden?')) {
+                window.open(mailtoLink);
+            }
+        }, 1000);
+        
+        loadOrderHistory(); // Refresh the order history
+    }
+}
+
+function reorderItems(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    // Artikel zum Warenkorb hinzufügen
+    order.items.forEach(item => {
+        const existingCartItem = cart.find(cartItem => cartItem.id === item.productId);
+        if (existingCartItem) {
+            existingCartItem.quantity += item.quantity;
+        } else {
+            const product = products.find(p => p.id === item.productId);
+            if (product) {
+                cart.push({...product, quantity: item.quantity});
+            }
+        }
+    });
+    
+    updateCartCounter();
+    showNotification(`🛍️ ${order.items.length} Artikel aus Bestellung #${orderId} wurden zum Warenkorb hinzugefügt!`);
+    
+    // Optional: Direkt zum Warenkorb wechseln
+    setTimeout(() => {
+        if (confirm('🛒 Möchten Sie den Warenkorb jetzt anzeigen?')) {
+            closeCustomerOrderDetails();
+            showCart();
+        }
+    }, 1000);
+}
+
+function downloadOrderReceipt(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    // Rechnung als PDF simulieren (da wir kein Backend haben)
+    const receiptContent = generateReceiptContent(order);
+    
+    // Als HTML-Datei zum Download anbieten
+    const blob = new Blob([receiptContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `KlarKRAFT_Rechnung_${order.orderId}.html`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification('📄 Rechnung wurde heruntergeladen!');
+}
+
+function generateReceiptContent(order) {
+    const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
+    
+    return `
+        <!DOCTYPE html>
+        <html lang="de">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Rechnung ${order.orderId} - KlarKRAFT</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #ff6b35; }
+                .company { color: #ff6b35; font-size: 2rem; font-weight: bold; margin-bottom: 10px; }
+                .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+                .customer-info, .order-info { flex: 1; }
+                .order-info { text-align: right; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #f8f5f3; color: #5d4037; font-weight: bold; }
+                .total-row { background-color: #fff8f5; font-weight: bold; }
+                .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9rem; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="company">KlarKRAFT</div>
+                <div>Energiestraße 15 • 47803 Krefeld • Deutschland</div>
+                <div>Tel: +49 (0) 2151 - 892347 • E-Mail: info@klarkraft.de</div>
+            </div>
+            
+            <h1 style="color: #ff6b35;">Rechnung #${order.orderId}</h1>
+            
+            <div class="invoice-info">
+                <div class="customer-info">
+                    <h3>Rechnungsadresse:</h3>
+                    <div>
+                        ${order.customerName}<br>
+                        ${order.shippingAddress.address}<br>
+                        ${order.shippingAddress.zip} ${order.shippingAddress.city}<br>
+                        ${order.shippingAddress.country}
+                    </div>
+                </div>
+                <div class="order-info">
+                    <h3>Bestelldaten:</h3>
+                    <div>
+                        <strong>Rechnungsnummer:</strong> ${order.orderId}<br>
+                        <strong>Bestelldatum:</strong> ${new Date(order.orderDate).toLocaleDateString('de-DE')}<br>
+                        <strong>Zahlungsart:</strong> ${order.paymentMethod}<br>
+                        <strong>Tracking:</strong> ${order.trackingNumber}
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Bestellte Artikel:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Artikel</th>
+                        <th style="text-align: center;">Menge</th>
+                        <th style="text-align: right;">Einzelpreis</th>
+                        <th style="text-align: right;">Gesamtpreis</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${order.items.map(item => `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td style="text-align: center;">${item.quantity}</td>
+                            <td style="text-align: right;">€${item.price.toFixed(2)}</td>
+                            <td style="text-align: right;">€${item.total.toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                    <tr>
+                        <td colspan="3" style="text-align: right;"><strong>Zwischensumme:</strong></td>
+                        <td style="text-align: right;">€${subtotal.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="text-align: right;"><strong>Versandkosten:</strong></td>
+                        <td style="text-align: right;">${order.shippingCost > 0 ? '€' + order.shippingCost.toFixed(2) : 'KOSTENLOS'}</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align: right; font-size: 1.2rem;"><strong>Gesamtbetrag:</strong></td>
+                        <td style="text-align: right; font-size: 1.2rem; color: #ff6b35;"><strong>€${order.total.toFixed(2)}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="footer">
+                <p><strong>Vielen Dank für Ihren Einkauf bei KlarKRAFT!</strong></p>
+                <p>Diese Rechnung wurde automatisch erstellt und ist ohne Unterschrift gültig.</p>
+                <p>
+                    <strong>KlarKRAFT GmbH</strong> • Energiestraße 15, 47803 Krefeld<br>
+                    USt-IdNr.: DE123456789 • HRB 12345 Amtsgericht Krefeld<br>
+                    Geschäftsführer: Marcus Energius
+                </p>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+function closeCustomerOrderDetails() {
+    const modal = document.getElementById('customerOrderDetailsModal');
+    if (modal) {
+        modal.remove();
+    }
+}
