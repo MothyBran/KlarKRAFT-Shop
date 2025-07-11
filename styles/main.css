@@ -1682,3 +1682,404 @@
     border-color: #ff6b35;
     box-shadow: 0 4px 15px rgba(255,107,53,0.1);
 }
+
+/* CSS-Styles für Stornierungsanfragen-Features */
+
+/* Ausgegraute Buttons und Disabled-States */
+.btn-disabled {
+    background: #ccc !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.btn-disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.select-disabled {
+    background-color: #f0f0f0 !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}
+
+.select-disabled:hover {
+    border-color: #d7ccc8 !important;
+}
+
+/* Stornierungsanfrage-Badges */
+.cancellation-request-badge {
+    background: #ff9800;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: pulse-orange 2s infinite;
+}
+
+/* Pulse-Animation für Stornierungsanfragen */
+@keyframes pulse-orange {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 152, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+        opacity: 1;
+    }
+}
+
+/* Spezielle Pulse-Animation für "STORNIERUNG ANGEFRAGT!" */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Stornierungsanfrage-Info-Boxen */
+.cancellation-request-info {
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid #ff9800;
+    border-left: 4px solid #ff9800;
+    border-radius: 8px;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+}
+
+.cancellation-request-info h4 {
+    color: #ff9800;
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.cancellation-request-info p {
+    margin: 0.25rem 0;
+    font-size: 0.8rem;
+    color: #8d6e63;
+}
+
+/* Abgelehnte Stornierung */
+.cancellation-denied-info {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid #f44336;
+    border-left: 4px solid #f44336;
+    border-radius: 8px;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+}
+
+.cancellation-denied-info h4 {
+    color: #f44336;
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.cancellation-denied-info p {
+    margin: 0.25rem 0;
+    font-size: 0.8rem;
+    color: #8d6e63;
+}
+
+/* Genehmigte Stornierung */
+.cancellation-approved-info {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid #4caf50;
+    border-left: 4px solid #4caf50;
+    border-radius: 8px;
+    padding: 0.8rem;
+    margin: 0.5rem 0;
+}
+
+.cancellation-approved-info h4 {
+    color: #4caf50;
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+/* Verbesserte Master-Tabelle für Stornierungsanfragen */
+.master-table .cancellation-indicator {
+    background: #ff9800;
+    color: white;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    animation: pulse-orange 3s infinite;
+}
+
+/* Tooltip für disabled Buttons */
+.btn-disabled[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+.btn-disabled[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    z-index: 1000;
+}
+
+/* Erweiterte Order-Card Styles für Stornierungsanfragen */
+.order-card-with-cancellation {
+    border-left: 4px solid #ff9800 !important;
+    background: rgba(255, 152, 0, 0.02);
+}
+
+.order-card-with-cancellation::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 152, 0, 0.1), transparent);
+}
+
+/* Status-Badge-Container für mehrere Badges */
+.status-badges-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Erweiterte Timeline-Styles für Stornierungsanfragen */
+.timeline-item-cancellation-request {
+    border-left-color: #ff9800;
+}
+
+.timeline-item-cancellation-request::before {
+    background: #ff9800;
+    border-color: #ff9800;
+}
+
+.timeline-item-cancellation-denied {
+    border-left-color: #f44336;
+}
+
+.timeline-item-cancellation-denied::before {
+    background: #f44336;
+    border-color: #f44336;
+}
+
+.timeline-item-cancellation-approved {
+    border-left-color: #4caf50;
+}
+
+.timeline-item-cancellation-approved::before {
+    background: #4caf50;
+    border-color: #4caf50;
+}
+
+/* Warning-Styles für kritische Aktionen */
+.warning-action {
+    background: #ff9800 !important;
+    border: 2px solid #f57c00;
+    animation: warning-pulse 2s infinite;
+}
+
+@keyframes warning-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(255, 152, 0, 0);
+    }
+}
+
+/* Mobile Optimierungen für Stornierungsanfragen */
+@media (max-width: 768px) {
+    .status-badges-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .cancellation-request-badge {
+        font-size: 0.7rem;
+        padding: 1px 6px;
+    }
+    
+    .cancellation-request-info,
+    .cancellation-denied-info,
+    .cancellation-approved-info {
+        padding: 0.6rem;
+        margin: 0.3rem 0;
+    }
+    
+    .master-table .cancellation-indicator {
+        display: block;
+        margin-top: 2px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .btn-disabled[title]:hover::after,
+    .btn-disabled[title]:hover::before {
+        display: none;
+    }
+    
+    .order-card-actions {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    
+    .order-card-actions .btn,
+    .order-card-actions .action-btn {
+        width: 100%;
+        margin-bottom: 0.3rem;
+        text-align: center;
+    }
+}
+
+/* High-Contrast Mode Support für Stornierungsanfragen */
+@media (prefers-contrast: high) {
+    .cancellation-request-badge {
+        border: 2px solid #ff9800;
+    }
+    
+    .btn-disabled {
+        border: 2px solid #999;
+    }
+    
+    .cancellation-request-info,
+    .cancellation-denied-info,
+    .cancellation-approved-info {
+        border-width: 2px;
+    }
+}
+
+/* Dark Mode Support für Stornierungsanfragen */
+@media (prefers-color-scheme: dark) {
+    .cancellation-request-info {
+        background: rgba(255, 152, 0, 0.2);
+        border-color: #ffb74d;
+    }
+    
+    .cancellation-denied-info {
+        background: rgba(244, 67, 54, 0.2);
+        border-color: #ef5350;
+    }
+    
+    .cancellation-approved-info {
+        background: rgba(76, 175, 80, 0.2);
+        border-color: #66bb6a;
+    }
+    
+    .btn-disabled {
+        background: #444 !important;
+        color: #888 !important;
+    }
+    
+    .select-disabled {
+        background-color: #333 !important;
+        color: #888 !important;
+    }
+}
+
+/* Focus States für Accessibility */
+.btn-disabled:focus {
+    outline: 2px solid #ff9800;
+    outline-offset: 2px;
+}
+
+.select-disabled:focus {
+    outline: 2px solid #ff9800;
+    outline-offset: 2px;
+}
+
+/* Print-Styles für Stornierungsanfragen */
+@media print {
+    .cancellation-request-badge,
+    .btn-disabled,
+    .warning-action {
+        background: white !important;
+        color: black !important;
+        border: 1px solid black !important;
+        animation: none !important;
+    }
+    
+    .cancellation-request-info,
+    .cancellation-denied-info,
+    .cancellation-approved-info {
+        background: white !important;
+        border: 1px solid black !important;
+    }
+}
+
+/* Loading-Animation für Stornierungsaktionen */
+.cancellation-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.cancellation-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #ff9800;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 10;
+}
+
+/* Erfolgs-Animation für genehmigte Stornierungen */
+@keyframes success-flash {
+    0% { background-color: rgba(76, 175, 80, 0.1); }
+    50% { background-color: rgba(76, 175, 80, 0.3); }
+    100% { background-color: rgba(76, 175, 80, 0.1); }
+}
+
+.cancellation-success {
+    animation: success-flash 1s ease-in-out;
+}
+
+/* Error-Animation für abgelehnte Stornierungen */
+@keyframes error-flash {
+    0% { background-color: rgba(244, 67, 54, 0.1); }
+    50% { background-color: rgba(244, 67, 54, 0.3); }
+    100% { background-color: rgba(244, 67, 54, 0.1); }
+}
+
+.cancellation-error {
+    animation: error-flash 1s ease-in-out;
+}
