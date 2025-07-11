@@ -5,7 +5,7 @@
 const products = [
     {
         id: 1,
-        name: "Akkumulator Brett BASIS - Universal von KlarKRAFT",
+        name: "KlarKraft Brett BASIS - Universal",
         description: "Universelles KlarKraft Brett für alle Einkäufe mit neutraler Gravur. Ideal für den täglichen Gebrauch zur Harmonisierung aller Lebensmittel.",
         price: 189.99,
         image: "🪨",
@@ -14,7 +14,7 @@ const products = [
     },
     {
         id: 2,
-        name: "Akkumulator Brett ANIMALIS - Tierprodukte von KlarKRAFT",
+        name: "KlarKraft Brett ANIMALIS - Tierprodukte",
         description: "Spezialcodierung für Fleisch, Milch und Lederprodukte. Optimiert für tierische Erzeugnisse mit gezielter Energieharmonisierung.",
         price: 209.99,
         image: "🐄",
@@ -23,7 +23,7 @@ const products = [
     },
     {
         id: 3,
-        name: "Akkumulator Brett HERBA - Pflanzen & Kräuter von KlarKRAFT",
+        name: "KlarKraft Brett HERBA - Pflanzen & Kräuter",
         description: "Ideal für Obst, Gemüse und Heilpflanzen. Verstärkt die natürliche Lebensenergie pflanzlicher Produkte und deren Nährstoffgehalt.",
         price: 199.99,
         image: "🌿",
@@ -32,7 +32,7 @@ const products = [
     },
     {
         id: 4,
-        name: "Akkumulator Brett UMBRA - Schattengewächse von KlarKRAFT",
+        name: "KlarKraft Brett UMBRA - Schattengewächse",
         description: "Spezielles Energiefeld für Pilze und empfindliche Schattengewächse. Schonende Behandlung für besonders sensitive Produkte.",
         price: 219.99,
         image: "🍄",
@@ -41,7 +41,7 @@ const products = [
     },
     {
         id: 5,
-        name: "Akkumulator Brett MOBILO - Reise-/Taschenmodell von KlarKRAFT",
+        name: "KlarKraft Brett MOBILO - Reise-/Taschenmodell",
         description: "Kompakt und tragbar für unterwegs. Reduzierte Größe mit effizienter Energienutzung - weniger Ladezyklen erforderlich.",
         price: 149.99,
         image: "🎒",
@@ -50,7 +50,7 @@ const products = [
     },
     {
         id: 6,
-        name: "Akkumulator Brett CRYSTA - Schmuck & Steine" von KlarKRAFT,
+        name: "KlarKraft Brett CRYSTA - Schmuck & Steine",
         description: "Speziell für Energetisierung von Edelsteinen, Ketten und Amuletten. Komplettes Set mit Zubehör für Schmuckpflege.",
         price: 279.99,
         image: "💎",
@@ -63,7 +63,6 @@ const products = [
         description: "Kraftvolle Ampullen mit energetisiertem Wasser zur Reinigung und Harmonisierung von Objekten und Räumen.",
         price: 49.99,
         image: "💧",
-	badge: "UNIVERSAL",
         details: "5 Ampullen à 10ml mit hochfrequent energetisiertem Wasser aus natürlichen Quellen. Das Wasser wurde unter Vollmondlicht mit einer Auswahl kraftvoller Kristalle (Bergkristall, Amethyst, Rosenquarz) energetisiert. Wenige Tropfen genügen, um Gegenstände, Räume oder sogar Lebensmittel von negativer Energie zu befreien. Anwendung: 2-3 Tropfen auf den Gegenstand geben oder in den Raum sprühen. Das Elixier wirkt sofort und hält bis zu 48 Stunden an. Hergestellt in einem speziellen Mondlicht-Ritual mit jahrhundertealten Techniken."
     },
     {
@@ -72,7 +71,6 @@ const products = [
         description: "Spezielle Mikrofasertücher mit eingewobenen Kristallpartikeln für die tägliche energetische Reinigung.",
         price: 39.99,
         image: "🧽",
-	badge: "UNIVERSAL",
         details: "Set aus 3 hochwertigen Mikrofaser-Reinigungstüchern mit eingewobenen Bergkristall-Partikeln. Diese speziellen Tücher sind ideal für die tägliche energetische Reinigung von Gegenständen, Bildschirmen, Oberflächen und sogar Lebensmitteln. Die Kristallpartikel neutralisieren negative Energien beim Reinigungsvorgang. Größe: 30x30cm pro Tuch. Waschbar bis 40°C ohne Weichspüler. Die Tücher behalten ihre energetischen Eigenschaften auch nach häufigem Waschen. Perfekt für Smartphone-Displays, Computer, Spiegel und alle glatten Oberflächen."
     },
     {
@@ -822,7 +820,7 @@ function completeOrder() {
     const currentMasterSession = localStorage.getItem('klarkraft_currentMaster');
     
     if (!demoModeEnabled) {
-        showNotification(`📦 Bestellung eingegangen!`);
+        showNotification(`📦 Bestellung eingegangen! Manuelle Bearbeitung erforderlich.`);
         
         if (currentMaster) {
             updateOrdersCounter();
@@ -847,6 +845,16 @@ function completeOrder() {
                 showNotification(`📦 Demo: Bestellung #${order.orderId} wird bearbeitet`);
             }
         }, 5000);
+        
+        setTimeout(() => {
+            const orderIndex = orders.findIndex(o => o.orderId === order.orderId);
+            if (orderIndex !== -1) {
+                orders[orderIndex].status = 'processing2';
+                orders[orderIndex].autoProcessedBy = 'Demo-System';
+                localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+                showNotification(`📦 Demo: Bestellung #${order.orderId} wird versendet`);
+            }
+        }, 8000);
         
         setTimeout(() => {
             const orderIndex = orders.findIndex(o => o.orderId === order.orderId);
@@ -1147,7 +1155,7 @@ function getStatusInfo(status) {
             description: 'Ihre Bestellung wird derzeit bearbeitet.'
         },
         'processing2': {
-            text: 'Versendung wird vorbereitet',
+            text: 'Versand wird vorbereitet',
             icon: '📦',
             description: 'Ihre Bestellung wurde in den Versand übergeben.'
         },
@@ -1567,7 +1575,7 @@ function loadOrderHistory() {
                     <div style="font-size: 0.9rem; color: #8d6e63;">Abgeschlossen</div>
                 </div>
                 <div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">${userOrders.filter(o => o.status === 'pending' || o.status === 'processing1').length}</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">${userOrders.filter(o => o.status === 'pending' || o.status === 'processing1' || o.status === 'processing2').length}</div>
                     <div style="font-size: 0.9rem; color: #8d6e63;">In Bearbeitung</div>
                 </div>
                 <div>
@@ -1590,8 +1598,8 @@ function loadOrderHistory() {
 
 function createCustomerOrderCard(order) {
     const statusInfo = getStatusInfo(order.status);
-    const isActive = order.status === 'pending' || order.status === 'processing1';
-    const canCancel = (order.status === 'pending' || order.status === 'processing1') && !hasActiveCancellationRequest(order);
+    const isActive = order.status === 'pending' || order.status === 'processing1' || order.status === 'processing2';
+    const canCancel = (order.status === 'pending' || order.status === 'processing1' || order.status === 'processing2') && !hasActiveCancellationRequest(order);
     const hasCancellationRequest = hasActiveCancellationRequest(order);
     const wasCancellationDenied = order.customerCancellationDenied;
     
@@ -1723,7 +1731,7 @@ function showCustomerOrderDetails(orderId) {
 
     const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
     const statusInfo = getStatusInfo(order.status);
-    const canCancel = order.status === 'pending' || order.status === 'processing1';
+    const canCancel = order.status === 'pending' || order.status === 'processing1' || order.status === 'processing2';
     
     const modalHtml = `
         <div id="customerOrderDetailsModal" class="modal" style="display: block;">
@@ -2222,10 +2230,10 @@ function loadMasterOrders() {
                                 <td>
                                     <select class="status-select ${hasCancellationRequest ? 'select-disabled' : ''}" onchange="${hasCancellationRequest ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" value="${order.status}" ${hasCancellationRequest ? 'style="background: #f0f0f0; cursor: not-allowed;"' : ''}>
                                         <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
-                                        <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung...</option>
-										<option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet...</option>
-                                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Versendet</option>
-                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert!</option>
+                                        <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung</option>
+                                        <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet</option>
+                                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Abgeschlossen</option>
+                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
                                     </select>
                                     ${hasCancellationRequest ? `
                                         <br><small style="color: #ff9800; font-weight: bold;">Stornierung angefragt!</small>
@@ -2281,14 +2289,14 @@ function showNewOrders() {
 
     const pendingOrders = orders.filter(order => order.status === 'pending')
         .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
-    const processingOrders = orders.filter(order => order.status === 'processing1')
+    const processing1Orders = orders.filter(order => order.status === 'processing1')
         .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
-	const processingOrders = orders.filter(order => order.status === 'processing2')
+    const processing2Orders = orders.filter(order => order.status === 'processing2')
         .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
 
     const ordersList = document.getElementById('newOrdersList');
     
-    if (pendingOrders.length === 0 && processingOrders.length === 0) {
+    if (pendingOrders.length === 0 && processing1Orders.length === 0 && processing2Orders.length === 0) {
         ordersList.innerHTML = `
             <div class="empty-cart">
                 <p>🎉 Keine offenen Bestellungen!</p>
@@ -2300,8 +2308,9 @@ function showNewOrders() {
             <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
                 <h3 style="color: #ff6b35; margin-bottom: 0.5rem;">📊 Übersicht</h3>
                 <p><strong>${pendingOrders.length}</strong> neue Bestellung(en) warten auf Bearbeitung</p>
-                <p><strong>${processingOrders.length}</strong> Bestellung(en) sind in Bearbeitung</p>
-                <p>Gesamtwert offener Bestellungen: <strong>€${[...pendingOrders, ...processingOrders].reduce((sum, order) => sum + order.total, 0).toFixed(2)}</strong></p>
+                <p><strong>${processing1Orders.length}</strong> Bestellung(en) sind in Bearbeitung</p>
+                <p><strong>${processing2Orders.length}</strong> Bestellung(en) werden versendet</p>
+                <p>Gesamtwert offener Bestellungen: <strong>€${[...pendingOrders, ...processing1Orders, ...processing2Orders].reduce((sum, order) => sum + order.total, 0).toFixed(2)}</strong></p>
             </div>
         `;
 
@@ -2310,22 +2319,27 @@ function showNewOrders() {
             contentHtml += pendingOrders.map(order => createOrderCard(order, 'new')).join('');
         }
 
-        if (processingOrders.length > 0) {
-            contentHtml += `<h3 style="color: #ff9800; margin: 2rem 0 1rem 0;">⚙️ In Bearbeitung (${processingOrders.length})</h3>`;
-            contentHtml += processingOrders.map(order => createOrderCard(order, 'processing')).join('');
+        if (processing1Orders.length > 0) {
+            contentHtml += `<h3 style="color: #ff9800; margin: 2rem 0 1rem 0;">⚙️ In Bearbeitung (${processing1Orders.length})</h3>`;
+            contentHtml += processing1Orders.map(order => createOrderCard(order, 'processing1')).join('');
+        }
+
+        if (processing2Orders.length > 0) {
+            contentHtml += `<h3 style="color: #2196f3; margin: 2rem 0 1rem 0;">📦 Wird versendet (${processing2Orders.length})</h3>`;
+            contentHtml += processing2Orders.map(order => createOrderCard(order, 'processing2')).join('');
         }
 
         ordersList.innerHTML = contentHtml;
     }
     
     document.getElementById('newOrdersModal').style.display = 'block';
-    logActivity('View Orders', `Viewed ${pendingOrders.length} pending and ${processingOrders.length} processing orders`);
+    logActivity('View Orders', `Viewed ${pendingOrders.length} pending, ${processing1Orders.length} processing1 and ${processing2Orders.length} processing2 orders`);
 }
 
 function createOrderCard(order, type) {
-    const borderColor = type === 'new' ? '#f44336' : '#ff9800';
-    const statusLabel = type === 'new' ? 'NEU' : 'IN ARBEIT';
-    const statusBg = type === 'new' ? '#f44336' : '#ff9800';
+    const borderColor = type === 'new' ? '#f44336' : (type === 'processing1' ? '#ff9800' : '#2196f3');
+    const statusLabel = type === 'new' ? 'NEU' : (type === 'processing1' ? 'IN ARBEIT' : 'VERSAND');
+    const statusBg = type === 'new' ? '#f44336' : (type === 'processing1' ? '#ff9800' : '#2196f3');
     const hasCancellationRequest = hasActiveCancellationRequest(order);
 
     return `
@@ -2384,9 +2398,13 @@ function createOrderCard(order, type) {
                     <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `processOrder('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
                         ✅ Übernehmen
                     </button>
+                ` : type === 'processing1' ? `
+                    <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#2196f3'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                        📦 Zum Versand
+                    </button>
                 ` : `
                     <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
-                        📦 Versandbereit
+                        🚚 Versandbereit
                     </button>
                 `}
                 <button class="btn" onclick="viewOrderDetailsInModal('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.5rem 1rem;">
@@ -2432,6 +2450,31 @@ function processOrder(orderId) {
     
     updateOrdersCounter();
     showNewOrders();
+}
+
+function advanceToShipping(orderId) {
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    if (confirm(`📦 Bestellung #${orderId} zum Versand weiterleiten?`)) {
+        orders[orderIndex].status = 'processing2';
+        orders[orderIndex].statusUpdatedBy = currentMaster.name;
+        orders[orderIndex].statusUpdatedAt = new Date().toISOString();
+        orders[orderIndex].shippingStartedAt = new Date().toISOString();
+        
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        
+        logActivity('Advance to Shipping', `Order ${orderId} advanced to shipping by ${currentMaster.name}`);
+        showNotification(`📦 Bestellung #${orderId} wurde zum Versand weitergeleitet!`);
+        
+        updateOrdersCounter();
+        if (document.getElementById('newOrdersModal').style.display === 'block') {
+            showNewOrders();
+        }
+    }
 }
 
 function markAsCompleted(orderId) {
@@ -2721,10 +2764,19 @@ function viewOrderDetailsInModal(orderId) {
                     
                     ${order.status === 'processing1' ? `
                         <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
-                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}'); closeOrderDetails();`}" 
-                                style="background: ${hasCancellationRequest ? '#ccc' : '#ff9800'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
+                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}'); closeOrderDetails();`}" 
+                                style="background: ${hasCancellationRequest ? '#ccc' : '#2196f3'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
                                 ${hasCancellationRequest ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
-                            📦 Als versendet markieren
+                            📦 Zum Versand
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status === 'processing2' ? `
+                        <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
+                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}'); closeOrderDetails();`}" 
+                                style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
+                                ${hasCancellationRequest ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                            🚚 Als versendet markieren
                         </button>
                     ` : ''}
                     
