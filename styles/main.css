@@ -1282,6 +1282,7 @@
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+       color: black !important;
 }
 
 .customer-order-card::before {
@@ -1322,12 +1323,13 @@
 .order-card-header h4 {
     font-size: 1.2rem;
     margin: 0;
-    color: #5d4037;
+     color: #5d4037;
 }
 
 /* Order Card Content */
 .order-card-content {
     margin-bottom: 1rem;
+            color: black !important;
 }
 
 /* Order Card Actions */
@@ -1373,6 +1375,7 @@
     width: 2px;
     height: calc(100% + 1.5rem);
     background: #e0e0e0;
+            color: black !important;
 }
 
 .customer-timeline-item:last-child::before {
