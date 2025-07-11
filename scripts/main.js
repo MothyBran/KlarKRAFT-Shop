@@ -1123,10 +1123,11 @@ function closeOrderDetails() {
 // ========== STATUS & HELPER FUNCTIONS ==========
 function getStatusText(status) {
     const statusTexts = {
-        'pending': 'In Bearbeitung',
-        'processing': 'Wird versendet',
-        'completed': 'Geliefert',
-        'cancelled': 'Storniert'
+        'pending': 'Ausstehend',
+        'processing1': 'In Bearbeitung...',
+        'processing2': 'Wird versendet...',
+        'completed': 'Abgeschlossen',
+        'cancelled': 'Storniert!'
     };
     return statusTexts[status] || status;
 }
@@ -1134,18 +1135,23 @@ function getStatusText(status) {
 function getStatusInfo(status) {
     const statusMap = {
         'pending': {
-            text: 'In Bearbeitung',
+            text: 'Ausstehend',
             icon: '⏳',
-            description: 'Ihre Bestellung ist eingegangen und wird bearbeitet.'
+            description: 'Ihre Bestellung ist eingegangen und wird umgehend bearbeitet.'
         },
-        'processing': {
-            text: 'Versand wird vorbereitet',
+        'processing1': {
+            text: 'In Bearbeitung',
+            icon: '⚙️',
+            description: 'Ihre Bestellung wird derzeit bearbeitet.'
+        },
+        'processing2': {
+            text: 'Versendung wird vorbereitet',
             icon: '📦',
-            description: 'Ihre Bestellung wird gerade für den Versand vorbereitet.'
+            description: 'Ihre Bestellung wurde in den Versand übergeben.'
         },
         'completed': {
-            text: 'versendet',
-            icon: '✅',
+            text: 'Versendet',
+            icon: '🚚',
             description: 'Ihre Bestellung wurde erfolgreich versendet und trifft bald bei Ihnen ein.'
         },
         'cancelled': {
