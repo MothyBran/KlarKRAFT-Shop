@@ -1626,7 +1626,7 @@ ${order.shippingAddress.country}`;
                                     👁️ Details
                                 </button>
                                 <button class="btn" onclick="quickUpdateOrderStatus('${order.orderId}', 'processing')" style="background: #ff9800; width: auto; padding: 0.5rem 1rem;">
-                                    📦 Versenden
+                                    📦 Versandbereit
                                 </button>
                                 <button class="btn" onclick="cancelOrderFromModal('${order.orderId}')" style="background: #f44336; width: auto; padding: 0.5rem 1rem;">
                                     ❌ Stornieren
@@ -3435,7 +3435,7 @@ function showEmailPreview(email, subject, body, mailtoLink) {
                             </button>
                         ` : `
                             <button class="btn" onclick="markAsCompleted('${order.orderId}')" style="background: #4caf50; width: auto; padding: 0.5rem 1rem;">
-                                📦 Versenden
+                                📦 Versandbereit
                             </button>
                         `}
                         <button class="btn" onclick="viewOrderDetailsInModal('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.5rem 1rem;">
