@@ -1,5 +1,5 @@
 // ========== KLARKRAFT SHOP - MAIN APPLICATION ==========
-// Vollständig überarbeitete Version mit erweiterten Stornierungsfunktionen
+// Erweiterte Version mit Timeline und überarbeiteter Stornierungslogik
 
 // ========== PRODUCT DATA ==========
 const products = [
@@ -799,7 +799,18 @@ function completeOrder() {
             'Neue Zahlungsmethode',
         status: 'pending',
         orderDate: new Date().toISOString(),
-        trackingNumber: 'KK' + Math.random().toString(36).substr(2, 8).toUpperCase()
+        trackingNumber: 'KK' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+        timeline: [
+            {
+                timestamp: new Date().toISOString(),
+                status: 'pending',
+                event: 'order_placed',
+                description: 'Bestellung eingegangen',
+                icon: '📦',
+                actor: currentUser.name,
+                actorType: 'customer'
+            }
+        ]
     };
     
     orders.push(order);
@@ -841,6 +852,7 @@ function completeOrder() {
             if (orderIndex !== -1) {
                 orders[orderIndex].status = 'processing1';
                 orders[orderIndex].autoProcessedBy = 'Demo-System';
+                addTimelineEvent(orders[orderIndex], 'processing1', 'processing_started', 'Bearbeitung gestartet', '⚙️', 'Demo-System', 'system');
                 localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
                 showNotification(`📦 Demo: Bestellung #${order.orderId} wird bearbeitet`);
             }
@@ -851,6 +863,7 @@ function completeOrder() {
             if (orderIndex !== -1) {
                 orders[orderIndex].status = 'processing2';
                 orders[orderIndex].autoProcessedBy = 'Demo-System';
+                addTimelineEvent(orders[orderIndex], 'processing2', 'shipping_prepared', 'Versandvorbereitung', '📦', 'Demo-System', 'system');
                 localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
                 showNotification(`📦 Demo: Bestellung #${order.orderId} wird versendet`);
             }
@@ -861,11 +874,90 @@ function completeOrder() {
             if (orderIndex !== -1) {
                 orders[orderIndex].status = 'completed';
                 orders[orderIndex].autoCompletedBy = 'Demo-System';
+                addTimelineEvent(orders[orderIndex], 'completed', 'order_shipped', 'Bestellung versendet', '🚚', 'Demo-System', 'system');
                 localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
                 showNotification(`🚚 Demo: Bestellung #${order.orderId} wurde versendet!`);
             }
         }, 10000);
     }
+}
+
+// ========== TIMELINE FUNCTIONS ==========
+function addTimelineEvent(order, status, event, description, icon, actor, actorType, extraData = {}) {
+    if (!order.timeline) {
+        order.timeline = [];
+    }
+    
+    const timelineEvent = {
+        timestamp: new Date().toISOString(),
+        status: status,
+        event: event,
+        description: description,
+        icon: icon,
+        actor: actor,
+        actorType: actorType,
+        ...extraData
+    };
+    
+    order.timeline.push(timelineEvent);
+}
+
+function generateOrderTimeline(order) {
+    if (!order.timeline || order.timeline.length === 0) {
+        return `
+            <div class="customer-timeline">
+                <div class="customer-timeline-item pending">
+                    <div class="timeline-icon">📦</div>
+                    <div class="timeline-content">
+                        <strong>Bestellung eingegangen</strong>
+                        <div class="timeline-date">${new Date(order.orderDate).toLocaleString('de-DE')}</div>
+                        <div class="timeline-detail">Bestellung wurde erfolgreich aufgegeben</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="customer-timeline">
+            ${order.timeline.map((event, index) => {
+                const statusClass = getTimelineStatusClass(event.status, order.status, index === order.timeline.length - 1);
+                return `
+                    <div class="customer-timeline-item ${statusClass}">
+                        <div class="timeline-icon">${event.icon}</div>
+                        <div class="timeline-content">
+                            <strong>${event.description}</strong>
+                            <div class="timeline-date">${new Date(event.timestamp).toLocaleString('de-DE')}</div>
+                            <div class="timeline-detail">
+                                ${event.actorType === 'system' ? 'Automatisch' : 
+                                  event.actorType === 'master' ? `Bearbeitet von: ${event.actor}` : 
+                                  `von ${event.actor}`}
+                            </div>
+                            ${event.cancellationReason ? `
+                                <div class="timeline-detail" style="color: #f44336; font-weight: bold;">
+                                    Grund: ${getReasonText(event.cancellationReason)}
+                                </div>
+                            ` : ''}
+                            ${event.note ? `
+                                <div class="timeline-detail" style="font-style: italic;">
+                                    Notiz: ${event.note}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function getTimelineStatusClass(eventStatus, orderStatus, isLast) {
+    if (eventStatus === 'cancelled') return 'cancelled';
+    if (eventStatus === 'completed') return 'completed';
+    if (isLast && (orderStatus === 'pending' || orderStatus === 'processing1' || orderStatus === 'processing2')) {
+        return 'pending';
+    }
+    return 'completed';
 }
 
 // ========== STORNIERUNGSFUNKTIONEN ==========
@@ -874,6 +966,12 @@ function hasActiveCancellationRequest(order) {
            !order.customerCancellationApproved && 
            !order.customerCancellationDenied &&
            order.status !== 'cancelled';
+}
+
+function canPerformOrderActions(order) {
+    // Wenn es eine aktive Stornierungsanfrage gibt, können keine weiteren Aktionen durchgeführt werden
+    // außer der Genehmigung/Ablehnung der Stornierung
+    return !hasActiveCancellationRequest(order);
 }
 
 function requestOrderCancellation(orderId) {
@@ -904,6 +1002,10 @@ function requestOrderCancellation(orderId) {
             requestedAt: new Date().toISOString(),
             requestedBy: currentUser.name
         };
+        
+        addTimelineEvent(orders[orderIndex], orders[orderIndex].status, 'cancellation_requested', 'Stornierung angefragt', '⚠️', currentUser.name, 'customer', {
+            note: reason
+        });
         
         localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
         
@@ -938,6 +1040,11 @@ function approveCancellation(orderId) {
     orders[orderIndex].refundProcessed = true;
     orders[orderIndex].customerCancellationApproved = true;
     
+    addTimelineEvent(orders[orderIndex], 'cancelled', 'cancellation_approved', 'Stornierung genehmigt', '✅', currentMaster.name, 'master', {
+        cancellationReason: 'customer_request',
+        note: details
+    });
+    
     delete orders[orderIndex].customerCancellationRequest;
     
     localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
@@ -966,6 +1073,10 @@ function denyCancellation(orderId) {
     
     const orderIndex = orders.findIndex(o => o.orderId === orderId);
     const order = orders[orderIndex];
+    
+    addTimelineEvent(orders[orderIndex], orders[orderIndex].status, 'cancellation_denied', 'Stornierung abgelehnt', '❌', currentMaster.name, 'master', {
+        note: reason
+    });
     
     delete orders[orderIndex].customerCancellationRequest;
     orders[orderIndex].customerCancellationDenied = {
@@ -1735,7 +1846,7 @@ function showCustomerOrderDetails(orderId) {
     
     const modalHtml = `
         <div id="customerOrderDetailsModal" class="modal" style="display: block;">
-            <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+            <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
                 <span class="close" onclick="closeCustomerOrderDetails()">&times;</span>
                 
                 <div style="text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #8d6e63, #a1887f); color: white; border-radius: 15px; margin: -2rem -2rem 2rem -2rem;">
@@ -1756,18 +1867,9 @@ function showCustomerOrderDetails(orderId) {
                     </div>
                 </div>
 
-                <div style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(255,107,53,0.1); border-radius: 15px; border-left: 5px solid #ff6b35;">
-                    <h3 style="color: #ff6b35; margin-bottom: 1rem;">📋 Bestellstatus</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div>
-                            <strong>Aktueller Status:</strong><br>
-                            <span style="color: #ff6b35;">${statusInfo.description}</span>
-                        </div>
-                        <div>
-                            <strong>Tracking-Nummer:</strong><br>
-                            <code style="background: rgba(255,255,255,0.7); padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: bold;">${order.trackingNumber}</code>
-                        </div>
-                    </div>
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: #8d6e63; margin-bottom: 1rem;">📋 Bestellstatus & Verlauf</h3>
+                    ${generateOrderTimeline(order)}
                 </div>
 
                 <div style="margin-bottom: 2rem;">
@@ -1834,7 +1936,7 @@ function showCustomerOrderDetails(orderId) {
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; justify-content: center;">
-                    ${canCancel ? `
+                    ${canCancel && !hasActiveCancellationRequest(order) ? `
                         <button class="btn" onclick="requestOrderCancellation('${order.orderId}'); closeCustomerOrderDetails();" style="background: #f44336; width: auto; padding: 0.8rem 1.5rem;">
                             ❌ Bestellung stornieren
                         </button>
@@ -2174,15 +2276,17 @@ function loadMasterCustomers() {
     
     renderCustomers();
     
-    searchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const filteredUsers = users.filter(user => 
-            user.name.toLowerCase().includes(searchTerm) ||
-            user.email.toLowerCase().includes(searchTerm) ||
-            (user.customerId && user.customerId.toLowerCase().includes(searchTerm))
-        );
-        renderCustomers(filteredUsers);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredUsers = users.filter(user => 
+                user.name.toLowerCase().includes(searchTerm) ||
+                user.email.toLowerCase().includes(searchTerm) ||
+                (user.customerId && user.customerId.toLowerCase().includes(searchTerm))
+            );
+            renderCustomers(filteredUsers);
+        });
+    }
 }
 
 function loadMasterOrders() {
@@ -2208,6 +2312,8 @@ function loadMasterOrders() {
                         .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
                         .map(order => {
                             const hasCancellationRequest = hasActiveCancellationRequest(order);
+                            const canPerformActions = canPerformOrderActions(order);
+                            
                             return `
                             <tr>
                                 <td>
@@ -2228,7 +2334,10 @@ function loadMasterOrders() {
                                 </td>
                                 <td>${order.paymentMethod}</td>
                                 <td>
-                                    <select class="status-select ${hasCancellationRequest ? 'select-disabled' : ''}" onchange="${hasCancellationRequest ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" value="${order.status}" ${hasCancellationRequest ? 'style="background: #f0f0f0; cursor: not-allowed;"' : ''}>
+                                    <select class="status-select ${!canPerformActions ? 'select-disabled' : ''}" 
+                                            onchange="${!canPerformActions ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" 
+                                            value="${order.status}" 
+                                            ${!canPerformActions ? 'style="background: #f0f0f0; cursor: not-allowed;" disabled' : ''}>
                                         <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
                                         <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung</option>
                                         <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet</option>
@@ -2243,7 +2352,10 @@ function loadMasterOrders() {
                                 <td>
                                     <button class="action-btn view" onclick="viewOrderDetailsInModal('${order.orderId}')" title="Details anzeigen">👁️</button>
                                     ${order.status !== 'cancelled' && order.status !== 'completed' ? 
-                                        `<button class="action-btn delete ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" title="${hasCancellationRequest ? 'Stornierungsanfrage aktiv' : 'Bestellung stornieren'}" style="cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'}; opacity: ${hasCancellationRequest ? '0.5' : '1'};">❌</button>` : 
+                                        `<button class="action-btn delete ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" 
+                                                title="${!canPerformActions ? 'Stornierungsanfrage aktiv' : 'Bestellung stornieren'}" 
+                                                style="cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'}; opacity: ${!canPerformActions ? '0.5' : '1'};">❌</button>` : 
                                         ''}
                                 </td>
                             </tr>
@@ -2256,22 +2368,52 @@ function loadMasterOrders() {
     
     renderOrders();
     
-    statusFilter.addEventListener('change', (e) => {
-        const selectedStatus = e.target.value;
-        const filteredOrders = selectedStatus ? 
-            orders.filter(order => order.status === selectedStatus) : 
-            orders;
-        renderOrders(filteredOrders);
-    });
+    if (statusFilter) {
+        statusFilter.addEventListener('change', (e) => {
+            const selectedStatus = e.target.value;
+            const filteredOrders = selectedStatus ? 
+                orders.filter(order => order.status === selectedStatus) : 
+                orders;
+            renderOrders(filteredOrders);
+        });
+    }
 }
 
 function updateOrderStatus(orderId, newStatus) {
     const orderIndex = orders.findIndex(o => o.orderId === orderId);
     if (orderIndex !== -1) {
-        const oldStatus = orders[orderIndex].status;
-        orders[orderIndex].status = newStatus;
-        orders[orderIndex].statusUpdatedBy = currentMaster.name;
-        orders[orderIndex].statusUpdatedAt = new Date().toISOString();
+        const order = orders[orderIndex];
+        
+        // Prüfen ob Aktionen erlaubt sind
+        if (!canPerformOrderActions(order)) {
+            showCancellationRequestError();
+            return;
+        }
+        
+        const oldStatus = order.status;
+        order.status = newStatus;
+        order.statusUpdatedBy = currentMaster.name;
+        order.statusUpdatedAt = new Date().toISOString();
+        
+        // Timeline Event hinzufügen
+        const statusDescriptions = {
+            'pending': 'Auf Bearbeitung wartend',
+            'processing1': 'In Bearbeitung',
+            'processing2': 'Versandvorbereitung',
+            'completed': 'Versand abgeschlossen',
+            'cancelled': 'Storniert'
+        };
+        
+        const statusIcons = {
+            'pending': '⏳',
+            'processing1': '⚙️',
+            'processing2': '📦',
+            'completed': '🚚',
+            'cancelled': '❌'
+        };
+        
+        addTimelineEvent(order, newStatus, 'status_updated', statusDescriptions[newStatus], statusIcons[newStatus], currentMaster.name, 'master');
+        
         localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
         
         logActivity('Order Status Update', `Order ${orderId} status changed from ${oldStatus} to ${newStatus}`);
@@ -2341,13 +2483,14 @@ function createOrderCard(order, type) {
     const statusLabel = type === 'new' ? 'NEU' : (type === 'processing1' ? 'IN ARBEIT' : 'VERSAND');
     const statusBg = type === 'new' ? '#f44336' : (type === 'processing1' ? '#ff9800' : '#2196f3');
     const hasCancellationRequest = hasActiveCancellationRequest(order);
+    const canPerformActions = canPerformOrderActions(order);
 
     return `
         <div class="cart-item" style="border-left: 4px solid ${borderColor};">
             <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <strong>Bestellung #${order.orderId}</strong>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <span style="background: ${statusBg}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">${statusLabel}</span>
                         ${hasCancellationRequest ? `
                             <span style="background: #ff9800; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; animation: pulse 2s infinite;">
@@ -2395,22 +2538,28 @@ function createOrderCard(order, type) {
             </div>
             <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 ${type === 'new' ? `
-                    <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `processOrder('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                    <button class="btn" onclick="processOrder('${order.orderId}')" style="background: #4caf50; width: auto; padding: 0.5rem 1rem;">
                         ✅ Übernehmen
                     </button>
                 ` : type === 'processing1' ? `
-                    <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#2196f3'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                    <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                            onclick="${!canPerformActions ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}')`}" 
+                            style="background: ${!canPerformActions ? '#ccc' : '#2196f3'}; width: auto; padding: 0.5rem 1rem; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};">
                         📦 Zum Versand
                     </button>
                 ` : `
-                    <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                    <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                            onclick="${!canPerformActions ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}')`}" 
+                            style="background: ${!canPerformActions ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};">
                         🚚 Versandbereit
                     </button>
                 `}
                 <button class="btn" onclick="viewOrderDetailsInModal('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.5rem 1rem;">
                     👁️ Details
                 </button>
-                <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#f44336'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                        onclick="${!canPerformActions ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" 
+                        style="background: ${!canPerformActions ? '#ccc' : '#f44336'}; width: auto; padding: 0.5rem 1rem; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};">
                     ❌ Stornieren
                 </button>
             </div>
@@ -2443,6 +2592,8 @@ function processOrder(orderId) {
     orders[orderIndex].assignedTo = currentMaster.name;
     orders[orderIndex].assignedRole = currentMaster.role;
     
+    addTimelineEvent(orders[orderIndex], 'processing1', 'processing_started', 'Bearbeitung übernommen', '⚙️', currentMaster.name, 'master');
+    
     localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
     
     logActivity('Process Order', `Order ${orderId} assigned to and processed by ${currentMaster.name}`);
@@ -2459,11 +2610,20 @@ function advanceToShipping(orderId) {
         return;
     }
 
+    const order = orders[orderIndex];
+    
+    if (!canPerformOrderActions(order)) {
+        showCancellationRequestError();
+        return;
+    }
+
     if (confirm(`📦 Bestellung #${orderId} zum Versand weiterleiten?`)) {
         orders[orderIndex].status = 'processing2';
         orders[orderIndex].statusUpdatedBy = currentMaster.name;
         orders[orderIndex].statusUpdatedAt = new Date().toISOString();
         orders[orderIndex].shippingStartedAt = new Date().toISOString();
+        
+        addTimelineEvent(orders[orderIndex], 'processing2', 'shipping_prepared', 'Versandvorbereitung gestartet', '📦', currentMaster.name, 'master');
         
         localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
         
@@ -2484,11 +2644,20 @@ function markAsCompleted(orderId) {
         return;
     }
 
+    const order = orders[orderIndex];
+    
+    if (!canPerformOrderActions(order)) {
+        showCancellationRequestError();
+        return;
+    }
+
     if (confirm(`📦 Bestellung #${orderId} als "versendet/abgeschlossen" markieren?`)) {
         orders[orderIndex].status = 'completed';
         orders[orderIndex].statusUpdatedBy = currentMaster.name;
         orders[orderIndex].statusUpdatedAt = new Date().toISOString();
         orders[orderIndex].completedAt = new Date().toISOString();
+        
+        addTimelineEvent(orders[orderIndex], 'completed', 'order_shipped', 'Bestellung versendet', '🚚', currentMaster.name, 'master');
         
         localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
         
@@ -2503,7 +2672,14 @@ function markAsCompleted(orderId) {
 }
 
 function cancelOrderFromModal(orderId) {
-    showCancellationModal(orders.find(o => o.orderId === orderId));
+    const order = orders.find(o => o.orderId === orderId);
+    
+    if (!canPerformOrderActions(order)) {
+        showCancellationRequestError();
+        return;
+    }
+    
+    showCancellationModal(order);
 }
 
 function showCancellationModal(order) {
@@ -2593,6 +2769,11 @@ function completeCancellation(event, orderId) {
     orders[orderIndex].cancelDetails = details;
     orders[orderIndex].refundProcessed = refund;
     
+    addTimelineEvent(orders[orderIndex], 'cancelled', 'order_cancelled', 'Bestellung storniert', '❌', currentMaster.name, 'master', {
+        cancellationReason: reason,
+        note: details
+    });
+    
     localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
 
     const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
@@ -2631,6 +2812,7 @@ function viewOrderDetailsInModal(orderId) {
 
     const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
     const hasCancellationRequest = hasActiveCancellationRequest(order);
+    const canPerformActions = canPerformOrderActions(order);
     
     const detailsHtml = `
         <div id="orderDetailsModal" class="modal" style="display: block;">
@@ -2660,6 +2842,11 @@ function viewOrderDetailsInModal(orderId) {
                         </div>
                     </div>
                 ` : ''}
+                
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: #8d6e63; margin-bottom: 1rem;">📋 Bestellverlauf</h3>
+                    ${generateOrderTimeline(order)}
+                </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                     <div class="detail-section">
@@ -2745,37 +2932,34 @@ function viewOrderDetailsInModal(orderId) {
 
                 <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
                     ${order.status === 'pending' ? `
-                        <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
-                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `processOrder('${order.orderId}'); closeOrderDetails();`}" 
-                                style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
-                                ${hasCancellationRequest ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                        <button class="btn" onclick="processOrder('${order.orderId}'); closeOrderDetails();" style="background: #4caf50;">
                             ✅ Bearbeitung übernehmen
                         </button>
                     ` : ''}
                     
                     ${order.status !== 'cancelled' && order.status !== 'completed' ? `
-                        <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
-                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `closeOrderDetails(); cancelOrderFromModal('${order.orderId}');`}" 
-                                style="background: ${hasCancellationRequest ? '#ccc' : '#f44336'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
-                                ${hasCancellationRequest ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                        <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `closeOrderDetails(); cancelOrderFromModal('${order.orderId}');`}" 
+                                style="background: ${!canPerformActions ? '#ccc' : '#f44336'}; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};"
+                                ${!canPerformActions ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
                             ❌ Stornieren
                         </button>
                     ` : ''}
                     
                     ${order.status === 'processing1' ? `
-                        <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
-                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}'); closeOrderDetails();`}" 
-                                style="background: ${hasCancellationRequest ? '#ccc' : '#2196f3'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
-                                ${hasCancellationRequest ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                        <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}'); closeOrderDetails();`}" 
+                                style="background: ${!canPerformActions ? '#ccc' : '#2196f3'}; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};"
+                                ${!canPerformActions ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
                             📦 Zum Versand
                         </button>
                     ` : ''}
                     
                     ${order.status === 'processing2' ? `
-                        <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
-                                onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}'); closeOrderDetails();`}" 
-                                style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
-                                ${hasCancellationRequest ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                        <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}'); closeOrderDetails();`}" 
+                                style="background: ${!canPerformActions ? '#ccc' : '#4caf50'}; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};"
+                                ${!canPerformActions ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
                             🚚 Als versendet markieren
                         </button>
                     ` : ''}
@@ -2875,6 +3059,63 @@ function createDemoUsers(users) {
     if (newUsersAdded) {
         localStorage.setItem('klarkraft_users', JSON.stringify(users));
     }
+}
+
+function loadMasterAnalytics() {
+    document.getElementById('analyticsContent').innerHTML = `
+        <div class="chart-container">
+            <h4>📊 Verkaufsübersicht</h4>
+            <p>Analytik-Dashboard in Entwicklung...</p>
+            <p>Hier werden später detaillierte Verkaufszahlen und Trends angezeigt.</p>
+        </div>
+    `;
+}
+
+function loadMasterSettings() {
+    document.getElementById('settingsContent').innerHTML = `
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🎮 Demo-Modus</h4>
+            <div class="setting-item">
+                <div class="setting-description">
+                    <div class="setting-title">Automatische Bestellabwicklung</div>
+                    <div class="setting-subtitle">
+                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist. Bei "Aus" werden niemals automatische Updates durchgeführt.
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
+        </div>
+        
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🧹 Datenbereinigung</h4>
+            <button class="btn" onclick="clearTestData()" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 1rem;">Test-Daten löschen</button>
+            <button class="btn" onclick="resetAllData()" style="background: #ff5722; width: auto; padding: 0.5rem 1rem;">Alle Daten zurücksetzen</button>
+        </div>
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">📊 Datenexport</h4>
+            <button class="btn" onclick="exportAllData()" style="width: auto; padding: 0.5rem 1rem;">Vollständiger Export</button>
+        </div>
+        <div>
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">👥 Mitarbeiter-Logs</h4>
+            <div id="activityLogs">${generateActivityLogs()}</div>
+        </div>
+    `;
+    updateDemoModeUI();
+}
+
+function generateActivityLogs() {
+    const recentLogs = activityLogs.slice(0, 10);
+    return recentLogs.length > 0 ? recentLogs.map(log => `
+        <div style="padding: 0.5rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.7); border-radius: 5px; border-left: 3px solid #ff6b35;">
+            <div style="font-size: 0.9rem;"><strong>${log.user}</strong> (${log.role}) - ${log.action}</div>
+            <div style="font-size: 0.8rem; color: #8d6e63;">${new Date(log.timestamp).toLocaleString('de-DE')}</div>
+            <div style="font-size: 0.8rem; color: #8d6e63;">${log.details}</div>
+        </div>
+    `).join('') : '<p>Keine Aktivitäten gefunden.</p>';
 }
 
 // ========== INITIALIZATION ==========
