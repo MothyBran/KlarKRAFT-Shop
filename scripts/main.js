@@ -820,7 +820,7 @@ function completeOrder() {
     const currentMasterSession = localStorage.getItem('klarkraft_currentMaster');
     
     if (!demoModeEnabled) {
-        showNotification(`📦 Bestellung eingegangen! Manuelle Bearbeitung erforderlich.`);
+        showNotification(`📦 Bestellung eingegangen!`);
         
         if (currentMaster) {
             updateOrdersCounter();
@@ -839,7 +839,7 @@ function completeOrder() {
         setTimeout(() => {
             const orderIndex = orders.findIndex(o => o.orderId === order.orderId);
             if (orderIndex !== -1) {
-                orders[orderIndex].status = 'processing';
+                orders[orderIndex].status = 'processing1';
                 orders[orderIndex].autoProcessedBy = 'Demo-System';
                 localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
                 showNotification(`📦 Demo: Bestellung #${order.orderId} wird bearbeitet`);
@@ -1565,7 +1565,7 @@ function loadOrderHistory() {
                     <div style="font-size: 0.9rem; color: #8d6e63;">Abgeschlossen</div>
                 </div>
                 <div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">${userOrders.filter(o => o.status === 'pending' || o.status === 'processing').length}</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ff9800;">${userOrders.filter(o => o.status === 'pending' || o.status === 'processing1').length}</div>
                     <div style="font-size: 0.9rem; color: #8d6e63;">In Bearbeitung</div>
                 </div>
                 <div>
@@ -1588,8 +1588,8 @@ function loadOrderHistory() {
 
 function createCustomerOrderCard(order) {
     const statusInfo = getStatusInfo(order.status);
-    const isActive = order.status === 'pending' || order.status === 'processing';
-    const canCancel = (order.status === 'pending' || order.status === 'processing') && !hasActiveCancellationRequest(order);
+    const isActive = order.status === 'pending' || order.status === 'processing1';
+    const canCancel = (order.status === 'pending' || order.status === 'processing1') && !hasActiveCancellationRequest(order);
     const hasCancellationRequest = hasActiveCancellationRequest(order);
     const wasCancellationDenied = order.customerCancellationDenied;
     
@@ -1721,7 +1721,7 @@ function showCustomerOrderDetails(orderId) {
 
     const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
     const statusInfo = getStatusInfo(order.status);
-    const canCancel = order.status === 'pending' || order.status === 'processing';
+    const canCancel = order.status === 'pending' || order.status === 'processing1';
     
     const modalHtml = `
         <div id="customerOrderDetailsModal" class="modal" style="display: block;">
@@ -2219,10 +2219,11 @@ function loadMasterOrders() {
                                 <td>${order.paymentMethod}</td>
                                 <td>
                                     <select class="status-select ${hasCancellationRequest ? 'select-disabled' : ''}" onchange="${hasCancellationRequest ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" value="${order.status}" ${hasCancellationRequest ? 'style="background: #f0f0f0; cursor: not-allowed;"' : ''}>
-                                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>In Bearbeitung</option>
-                                        <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Wird versendet</option>
-                                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Geliefert</option>
-                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
+                                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
+                                        <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung...</option>
+										<option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet...</option>
+                                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Versendet</option>
+                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert!</option>
                                     </select>
                                     ${hasCancellationRequest ? `
                                         <br><small style="color: #ff9800; font-weight: bold;">Stornierung angefragt!</small>
@@ -2278,7 +2279,9 @@ function showNewOrders() {
 
     const pendingOrders = orders.filter(order => order.status === 'pending')
         .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
-    const processingOrders = orders.filter(order => order.status === 'processing')
+    const processingOrders = orders.filter(order => order.status === 'processing1')
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+	const processingOrders = orders.filter(order => order.status === 'processing2')
         .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
 
     const ordersList = document.getElementById('newOrdersList');
@@ -2416,7 +2419,7 @@ function processOrder(orderId) {
 
     orders[orderIndex].processedBy = currentMaster.name;
     orders[orderIndex].processedAt = new Date().toISOString();
-    orders[orderIndex].status = 'processing';
+    orders[orderIndex].status = 'processing1';
     orders[orderIndex].assignedTo = currentMaster.name;
     orders[orderIndex].assignedRole = currentMaster.role;
     
@@ -2714,7 +2717,7 @@ function viewOrderDetailsInModal(orderId) {
                         </button>
                     ` : ''}
                     
-                    ${order.status === 'processing' ? `
+                    ${order.status === 'processing1' ? `
                         <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" 
                                 onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}'); closeOrderDetails();`}" 
                                 style="background: ${hasCancellationRequest ? '#ccc' : '#ff9800'}; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};"
