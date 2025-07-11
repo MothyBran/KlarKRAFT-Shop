@@ -1,3 +1,6 @@
+/* ========== KLARKRAFT SHOP - MAIN STYLESHEET ========== */
+/* Vollständig überarbeitete CSS für die erweiterte JavaScript-Funktionalität */
+
 /* ========== GLOBALE GRUNDLAGEN ========== */
 * {
     margin: 0;
@@ -11,6 +14,7 @@ body {
     min-height: 100vh;
     color: #5d4037;
     overflow-x: hidden;
+    scroll-behavior: smooth;
 }
 
 .container {
@@ -198,6 +202,7 @@ main {
     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
     position: relative;
+    animation: fadeIn 0.5s ease forwards;
 }
 
 .product-card:hover {
@@ -271,7 +276,7 @@ main {
     text-align: center;
 }
 
-/* ========== BUTTONS ========== */
+/* ========== ERWEITERTE BUTTON-SYSTEME ========== */
 .btn {
     background: linear-gradient(135deg, #ff6b35, #ff8a50);
     color: white;
@@ -286,6 +291,9 @@ main {
     margin-bottom: 10px;
     position: relative;
     overflow: hidden;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
 }
 
 .btn::before {
@@ -314,6 +322,47 @@ main {
 
 .btn:last-child {
     margin-bottom: 0;
+}
+
+/* Button-Varianten */
+.btn-success {
+    background: linear-gradient(135deg, #4caf50, #66bb6a);
+}
+
+.btn-success:hover {
+    box-shadow: 0 6px 20px rgba(76,175,80,0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ff9800, #ffb74d);
+}
+
+.btn-warning:hover {
+    box-shadow: 0 6px 20px rgba(255,152,0,0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #f44336, #ef5350);
+}
+
+.btn-danger:hover {
+    box-shadow: 0 6px 20px rgba(244,67,54,0.4);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #2196f3, #42a5f5);
+}
+
+.btn-info:hover {
+    box-shadow: 0 6px 20px rgba(33,150,243,0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #9e9e9e, #bdbdbd);
+}
+
+.btn-secondary:hover {
+    box-shadow: 0 6px 20px rgba(158,158,158,0.4);
 }
 
 /* Disabled Button States */
@@ -375,7 +424,15 @@ main {
     background: linear-gradient(135deg, #f44336, #ef5350); 
 }
 
-/* ========== MODAL-SYSTEM ========== */
+.action-btn.approve { 
+    background: linear-gradient(135deg, #4caf50, #66bb6a); 
+}
+
+.action-btn.deny { 
+    background: linear-gradient(135deg, #f44336, #ef5350); 
+}
+
+/* ========== ERWEITERTE MODAL-SYSTEME ========== */
 .modal {
     display: none;
     position: fixed;
@@ -454,6 +511,48 @@ main {
 .close:hover {
     color: #5d4037;
     transform: scale(1.1);
+}
+
+/* Large Modals */
+.modal-content.large {
+    max-width: 1200px;
+    max-height: 95vh;
+}
+
+.modal-content.medium {
+    max-width: 900px;
+}
+
+.modal-content.small {
+    max-width: 600px;
+}
+
+/* ========== EMAIL-PREVIEW MODAL ========== */
+.email-preview-content {
+    background: rgba(255,255,255,0.95);
+    padding: 1.5rem;
+    border-radius: 10px;
+    border: 2px solid #d7ccc8;
+    margin-bottom: 2rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.email-preview-header {
+    background: rgba(255,107,53,0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border-left: 4px solid #ff6b35;
+}
+
+.email-preview-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 /* ========== AUTHENTIFIZIERUNG ========== */
@@ -1003,6 +1102,8 @@ label:hover {
 
 .master-table tr:hover {
     background: linear-gradient(135deg, #f8f5f3, #f5f2f0);
+    transform: translateX(2px);
+    transition: all 0.3s ease;
 }
 
 .master-table tr:last-child td {
@@ -1029,7 +1130,7 @@ label:hover {
     box-shadow: 0 2px 8px rgba(76,175,80,0.3);
 }
 
-.status-processing {
+.status-processing, .status-processing1, .status-processing2 {
     background: linear-gradient(135deg, #ff9800, #ffb74d);
     box-shadow: 0 2px 8px rgba(255,152,0,0.3);
 }
@@ -1078,13 +1179,13 @@ label:hover {
     box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
 }
 
-/* ========== STORNIERUNGSANFRAGEN ========== */
+/* ========== ERWEITERTE STORNIERUNGSKOMPONENTEN ========== */
 .cancellation-request-badge {
     background: linear-gradient(135deg, #ff9800, #ffb74d);
     color: white;
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.7rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1092,21 +1193,22 @@ label:hover {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+    box-shadow: 0 2px 8px rgba(255,152,0,0.3);
 }
 
 @keyframes pulseOrange {
     0% {
-        box-shadow: 0 0 0 0 rgba(255,152,0,0.7);
+        box-shadow: 0 2px 8px rgba(255,152,0,0.3), 0 0 0 0 rgba(255,152,0,0.7);
         opacity: 1;
     }
     50% {
         opacity: 0.8;
     }
     70% {
-        box-shadow: 0 0 0 10px rgba(255,152,0,0);
+        box-shadow: 0 2px 8px rgba(255,152,0,0.3), 0 0 0 10px rgba(255,152,0,0);
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(255,152,0,0);
+        box-shadow: 0 2px 8px rgba(255,152,0,0.3), 0 0 0 0 rgba(255,152,0,0);
         opacity: 1;
     }
 }
@@ -1236,7 +1338,9 @@ label:hover {
     border-left: 5px solid #f44336;
 }
 
-.customer-order-card[data-status="processing"] {
+.customer-order-card[data-status="processing"], 
+.customer-order-card[data-status="processing1"],
+.customer-order-card[data-status="processing2"] {
     border-left: 5px solid #ff9800;
 }
 
@@ -1281,6 +1385,16 @@ label:hover {
     min-width: 120px;
     text-align: center;
     justify-content: center;
+}
+
+/* Order Card mit Cancellation Request */
+.order-card-with-cancellation {
+    border-left: 4px solid #ff9800 !important;
+    background: rgba(255,152,0,0.02);
+}
+
+.order-card-with-cancellation::before {
+    background: linear-gradient(90deg, transparent, rgba(255,152,0,0.1), transparent);
 }
 
 /* ========== TIMELINE-KOMPONENTEN ========== */
@@ -1431,6 +1545,7 @@ label:hover {
 .timeline-content:hover {
     border-color: #ff6b35;
     box-shadow: 0 4px 12px rgba(255,107,53,0.1);
+    transform: translateY(-1px);
 }
 
 .customer-timeline-item.completed .timeline-content {
@@ -1465,6 +1580,34 @@ label:hover {
     color: #8d6e63;
     font-size: 0.8rem;
     font-style: italic;
+}
+
+/* Timeline Erweiterungen für Stornierungen */
+.timeline-item-cancellation-request {
+    border-left-color: #ff9800;
+}
+
+.timeline-item-cancellation-request::before {
+    background: #ff9800;
+    border-color: #ff9800;
+}
+
+.timeline-item-cancellation-denied {
+    border-left-color: #f44336;
+}
+
+.timeline-item-cancellation-denied::before {
+    background: #f44336;
+    border-color: #f44336;
+}
+
+.timeline-item-cancellation-approved {
+    border-left-color: #4caf50;
+}
+
+.timeline-item-cancellation-approved::before {
+    background: #4caf50;
+    border-color: #4caf50;
 }
 
 /* ========== TOGGLE SWITCHES ========== */
@@ -1591,7 +1734,28 @@ input:checked + .toggle-slider:before {
     gap: 0.5rem;
 }
 
-/* ========== LOADING UND ANIMATIONEN ========== */
+/* Order Detail Grid */
+.order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.order-detail-card {
+    background: rgba(255,255,255,0.9);
+    padding: 1.5rem;
+    border-radius: 10px;
+    border: 2px solid #d7ccc8;
+    transition: all 0.3s ease;
+}
+
+.order-detail-card:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 4px 15px rgba(255,107,53,0.1);
+    transform: translateY(-2px);
+}
+
+/* ========== ERWEITERTE LOADING UND ANIMATIONEN ========== */
 .loading {
     position: relative;
     pointer-events: none;
@@ -1666,8 +1830,90 @@ input:checked + .toggle-slider:before {
     to { opacity: 1; }
 }
 
-.product-card {
-    animation: fadeIn 0.5s ease forwards;
+/* Pulse Animation für verschiedene Elemente */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Subtle Pulse für Status-Anzeigen */
+@keyframes subtlePulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.customer-order-card .status-pending {
+    animation: subtlePulse 3s infinite;
+}
+
+/* ========== SPEZIELLE STATUS-INDIKATOREN ========== */
+.status-badges-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.warning-action {
+    background: linear-gradient(135deg, #ff9800, #ffb74d) !important;
+    border: 2px solid #f57c00;
+    animation: warningPulse 2s infinite;
+}
+
+@keyframes warningPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255,152,0,0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(255,152,0,0);
+    }
+}
+
+/* Master Table Cancellation Indicator */
+.master-table .cancellation-indicator {
+    background: #ff9800;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    animation: pulseOrange 3s infinite;
+    display: inline-block;
+}
+
+/* ========== FOOTER ========== */
+footer {
+    background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%);
+    color: white;
+    padding: 3rem 0 1rem 0;
+    margin-top: 4rem;
+}
+
+footer a {
+    color: white;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: #ff6b35;
+    text-decoration: underline;
 }
 
 /* ========== RESPONSIVE DESIGN ========== */
@@ -1687,6 +1933,10 @@ input:checked + .toggle-slider:before {
     
     .auth-tab {
         text-align: center;
+    }
+    
+    .order-detail-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1783,13 +2033,13 @@ input:checked + .toggle-slider:before {
     
     .cancellation-request-badge {
         font-size: 0.7rem;
-        padding: 1px 6px;
+        padding: 2px 8px;
     }
     
     .cancellation-request-info,
     .cancellation-denied-info,
     .cancellation-approved-info {
-        padding: 0.6rem;
+        padding: 0.8rem;
         margin: 0.3rem 0;
     }
     
@@ -1819,6 +2069,15 @@ input:checked + .toggle-slider:before {
         width: 100%;
         margin-bottom: 0.3rem;
         text-align: center;
+    }
+
+    .email-preview-actions {
+        flex-direction: column;
+    }
+
+    .email-preview-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
     }
 }
 
@@ -1894,6 +2153,65 @@ input:checked + .toggle-slider:before {
     
     .form-group {
         margin-bottom: 0.8rem;
+    }
+
+    .setting-item {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .setting-description {
+        margin-right: 0;
+    }
+}
+
+/* Tablet-spezifische Anpassungen */
+@media (min-width: 481px) and (max-width: 768px) {
+    .customer-timeline-item {
+        padding-left: 3rem;
+    }
+    
+    .timeline-icon {
+        width: 2.8rem;
+        height: 2.8rem;
+        font-size: 1.1rem;
+    }
+    
+    .modal-content {
+        padding: 1.5rem;
+    }
+    
+    .order-card-actions .action-btn {
+        min-width: 100px;
+        flex: 0 1 auto;
+    }
+}
+
+/* Large Screen Optimierungen */
+@media (min-width: 1440px) {
+    .container {
+        max-width: 1400px;
+    }
+    
+    .products-grid {
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    }
+    
+    .modal-content {
+        max-width: 900px;
+    }
+    
+    .modal-content.large {
+        max-width: 1200px;
+    }
+    
+    .hero h1 {
+        font-size: 3.5rem;
+    }
+    
+    .logo {
+        font-size: 3rem;
     }
 }
 
@@ -1991,6 +2309,12 @@ input:checked + .toggle-slider:before {
         border-color: #555;
         color: #e0e0e0;
     }
+
+    .email-preview-content {
+        background: rgba(255,255,255,0.1);
+        border-color: #555;
+        color: #e0e0e0;
+    }
 }
 
 /* ========== PRINT STYLES ========== */
@@ -2050,6 +2374,12 @@ input:checked + .toggle-slider:before {
         color: black !important;
         box-shadow: none !important;
     }
+
+    .email-preview-content {
+        background: white !important;
+        color: black !important;
+        border: 1px solid black !important;
+    }
 }
 
 /* ========== FOCUS STATES FÜR ACCESSIBILITY ========== */
@@ -2084,33 +2414,7 @@ input:checked + .toggle-slider:before {
     outline-offset: 2px;
 }
 
-/* ========== ERWEITERTE HOVER-EFFEKTE ========== */
-.btn:not(:disabled):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255,107,53,0.3);
-}
-
-.payment-method-card:hover {
-    border-color: #ff6b35;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(255,107,53,0.2);
-}
-
-.master-table tr:hover {
-    background: linear-gradient(135deg, #f8f5f3, #f5f2f0);
-    transform: translateX(2px);
-}
-
-.timeline-content:hover {
-    transform: translateY(-1px);
-}
-
-/* ========== SCROLL-VERHALTEN ========== */
-html {
-    scroll-behavior: smooth;
-}
-
-/* ========== ZUSÄTZLICHE UTILITY-KLASSEN ========== */
+/* ========== UTILITY-KLASSEN ========== */
 .text-center { text-align: center; }
 .text-left { text-align: left; }
 .text-right { text-align: right; }
@@ -2146,199 +2450,67 @@ html {
 
 .transition { transition: all 0.3s ease; }
 
-/* Spezielle Styling für verschiedene Status-Indikatoren */
-.status-badges-container {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
+/* ========== SCROLL-VERHALTEN ========== */
+html {
+    scroll-behavior: smooth;
 }
 
-.warning-action {
-    background: linear-gradient(135deg, #ff9800, #ffb74d) !important;
-    border: 2px solid #f57c00;
-    animation: warningPulse 2s infinite;
-}
-
-@keyframes warningPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(255,152,0,0.7);
+/* ========== ERWEITERTE ANIMATIONEN ========== */
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
     }
-    50% {
-        box-shadow: 0 0 0 5px rgba(255,152,0,0);
-    }
-}
-
-/* Erweiterte Master Table Styles */
-.master-table .cancellation-indicator {
-    background: #ff9800;
-    color: white;
-    padding: 1px 4px;
-    border-radius: 3px;
-    font-size: 0.7rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    animation: pulseOrange 3s infinite;
-    display: inline-block;
-}
-
-/* Order Card Anpassungen für Stornierungsanfragen */
-.order-card-with-cancellation {
-    border-left: 4px solid #ff9800 !important;
-    background: rgba(255,152,0,0.02);
-}
-
-.order-card-with-cancellation::before {
-    background: linear-gradient(90deg, transparent, rgba(255,152,0,0.1), transparent);
-}
-
-/* Timeline Erweiterungen für Stornierungsanfragen */
-.timeline-item-cancellation-request {
-    border-left-color: #ff9800;
-}
-
-.timeline-item-cancellation-request::before {
-    background: #ff9800;
-    border-color: #ff9800;
-}
-
-.timeline-item-cancellation-denied {
-    border-left-color: #f44336;
-}
-
-.timeline-item-cancellation-denied::before {
-    background: #f44336;
-    border-color: #f44336;
-}
-
-.timeline-item-cancellation-approved {
-    border-left-color: #4caf50;
-}
-
-.timeline-item-cancellation-approved::before {
-    background: #4caf50;
-    border-color: #4caf50;
-}
-
-/* Order Detail Grid Erweiterungen */
-.order-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.order-detail-card {
-    background: rgba(255,255,255,0.9);
-    padding: 1.5rem;
-    border-radius: 10px;
-    border: 2px solid #d7ccc8;
-    transition: all 0.3s ease;
-}
-
-.order-detail-card:hover {
-    border-color: #ff6b35;
-    box-shadow: 0 4px 15px rgba(255,107,53,0.1);
-    transform: translateY(-2px);
-}
-
-/* Footer Styling */
-footer {
-    background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%);
-    color: white;
-    padding: 3rem 0 1rem 0;
-    margin-top: 4rem;
-}
-
-footer a {
-    color: white;
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-footer a:hover {
-    color: #ff6b35;
-    text-decoration: underline;
-}
-
-/* Zusätzliche Animationen für bessere UX */
-@keyframes subtlePulse {
-    0%, 100% {
+    to {
+        transform: translateX(0);
         opacity: 1;
     }
-    50% {
-        opacity: 0.8;
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
     }
 }
 
-.customer-order-card .status-pending {
-    animation: subtlePulse 3s infinite;
-}
-
-/* Erweiterte Button-Variationen */
-.btn-success {
-    background: linear-gradient(135deg, #4caf50, #66bb6a);
-}
-
-.btn-warning {
-    background: linear-gradient(135deg, #ff9800, #ffb74d);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #f44336, #ef5350);
-}
-
-.btn-info {
-    background: linear-gradient(135deg, #2196f3, #42a5f5);
-}
-
-.btn-secondary {
-    background: linear-gradient(135deg, #9e9e9e, #bdbdbd);
-}
-
-/* Tablet-spezifische Anpassungen */
-@media (min-width: 481px) and (max-width: 768px) {
-    .customer-timeline-item {
-        padding-left: 3rem;
+@keyframes bounce {
+    0%, 20%, 53%, 80%, 100% {
+        transform: translate3d(0, 0, 0);
     }
-    
-    .timeline-icon {
-        width: 2.8rem;
-        height: 2.8rem;
-        font-size: 1.1rem;
+    40%, 43% {
+        transform: translate3d(0, -30px, 0);
     }
-    
-    .modal-content {
-        padding: 1.5rem;
+    70% {
+        transform: translate3d(0, -15px, 0);
     }
-    
-    .order-card-actions .action-btn {
-        min-width: 100px;
-        flex: 0 1 auto;
+    90% {
+        transform: translate3d(0, -4px, 0);
     }
 }
 
-/* Large Screen Optimierungen */
-@media (min-width: 1440px) {
-    .container {
-        max-width: 1400px;
-    }
-    
-    .products-grid {
-        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    }
-    
-    .modal-content {
-        max-width: 900px;
-    }
-    
-    .hero h1 {
-        font-size: 3.5rem;
-    }
-    
-    .logo {
-        font-size: 3rem;
-    }
+.bounce {
+    animation: bounce 1s ease-in-out;
+}
+
+/* ========== ERWEITERTE PERFORMANCE-OPTIMIERUNGEN ========== */
+.modal-content,
+.customer-order-card,
+.timeline-content,
+.action-btn {
+    will-change: transform;
+}
+
+.modal {
+    contain: layout;
+}
+
+.products-grid {
+    contain: layout;
 }
 
 /* ========== ENDE DER CSS ========== */
