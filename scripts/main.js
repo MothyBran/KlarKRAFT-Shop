@@ -3602,17 +3602,17 @@ function getStatusInfo(status) {
         'pending': {
             text: 'In Bearbeitung',
             icon: '⏳',
-            description: 'Ihre Bestellung wird bearbeitet und für den Versand vorbereitet.'
+            description: 'Ihre Bestellung ist eingegangen und wird bearbeitet.'
         },
         'processing': {
-            text: 'Wird versendet',
+            text: 'Versand wird vorbereitet',
             icon: '📦',
             description: 'Ihre Bestellung wird gerade für den Versand vorbereitet.'
         },
         'completed': {
-            text: 'Geliefert',
+            text: 'versendet',
             icon: '✅',
-            description: 'Ihre Bestellung wurde erfolgreich zugestellt.'
+            description: 'Ihre Bestellung wurde erfolgreich versendet und trifft bald bei Ihnen ein.'
         },
         'cancelled': {
             text: 'Storniert',
