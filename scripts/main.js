@@ -4412,3 +4412,426 @@ KlarKRAFT Team`;
     closeOrderDetails();
     loadMasterOrders(); // Refresh order list
 }
+
+// Erweiterte Funktionen für Stornierungsanfragen-Anzeige
+
+// Hilfsfunktion: Prüft ob eine Bestellung eine aktive Stornierungsanfrage hat
+function hasActiveCancellationRequest(order) {
+    return order.customerCancellationRequest && 
+           !order.customerCancellationApproved && 
+           !order.customerCancellationDenied &&
+           order.status !== 'cancelled';
+}
+
+// Erweiterte Kunden-Bestellkarte mit Stornierungsanfrage-Anzeige
+function createCustomerOrderCard(order) {
+    const statusInfo = getStatusInfo(order.status);
+    const isActive = order.status === 'pending' || order.status === 'processing';
+    const canCancel = (order.status === 'pending' || order.status === 'processing') && !hasActiveCancellationRequest(order);
+    const hasCancellationRequest = hasActiveCancellationRequest(order);
+    const wasCancellationDenied = order.customerCancellationDenied;
+    
+    return `
+        <div class="customer-order-card" onclick="showCustomerOrderDetails('${order.orderId}')" style="cursor: pointer;" data-status="${order.status}">
+            <div class="order-card-header">
+                <div>
+                    <h4 style="margin: 0; color: #5d4037;">Bestellung #${order.orderId}</h4>
+                    <p style="margin: 0.25rem 0; color: #8d6e63; font-size: 0.9rem;">
+                        📅 ${new Date(order.orderDate).toLocaleDateString('de-DE', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.3rem; font-weight: bold; color: #ff6b35;">€${order.total.toFixed(2)}</div>
+                    <span class="order-status status-${order.status}">${statusInfo.text}</span>
+                </div>
+            </div>
+            
+            <div class="order-card-content">
+                <div style="margin: 1rem 0;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="font-weight: bold;">📦 Artikel:</span>
+                        <span>${order.items.length} Produkt${order.items.length !== 1 ? 'e' : ''}</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: #8d6e63;">
+                        ${order.items.slice(0, 2).map(item => `${item.name} (${item.quantity}x)`).join(', ')}
+                        ${order.items.length > 2 ? ` und ${order.items.length - 2} weitere...` : ''}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem; color: #8d6e63;">
+                    <div>
+                        <strong>💳 Bezahlung:</strong><br>
+                        ${order.paymentMethod}
+                    </div>
+                    <div>
+                        <strong>📋 Tracking:</strong><br>
+                        ${order.trackingNumber}
+                    </div>
+                </div>
+                
+                <!-- Stornierungsanfrage-Status für Kunden -->
+                ${hasCancellationRequest ? `
+                    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(255,152,0,0.1); border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <div style="font-size: 0.9rem; color: #ff9800; font-weight: bold;">
+                            ⏳ Stornierungsanfrage eingereicht
+                        </div>
+                        <div style="font-size: 0.8rem; color: #8d6e63; margin-top: 0.25rem;">
+                            Eingereicht am: ${new Date(order.customerCancellationRequest.requestedAt).toLocaleString('de-DE')}<br>
+                            Grund: ${order.customerCancellationRequest.reason}<br>
+                            Status: Wird bearbeitet...
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Abgelehnte Stornierung -->
+                ${wasCancellationDenied ? `
+                    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(244,67,54,0.1); border-radius: 8px; border-left: 4px solid #f44336;">
+                        <div style="font-size: 0.9rem; color: #f44336; font-weight: bold;">
+                            ❌ Stornierungsanfrage abgelehnt
+                        </div>
+                        <div style="font-size: 0.8rem; color: #8d6e63; margin-top: 0.25rem;">
+                            Abgelehnt am: ${new Date(wasCancellationDenied.deniedAt).toLocaleString('de-DE')}<br>
+                            Grund: ${wasCancellationDenied.reason}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${isActive && !hasCancellationRequest && !wasCancellationDenied ? `
+                    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(255,107,53,0.1); border-radius: 8px; border-left: 4px solid #ff6b35;">
+                        <div style="font-size: 0.9rem; color: #ff6b35; font-weight: bold;">
+                            ${statusInfo.icon} ${statusInfo.description}
+                        </div>
+                        ${order.status === 'processing' && order.processedBy ? `
+                            <div style="font-size: 0.8rem; color: #8d6e63; margin-top: 0.25rem;">
+                                Bearbeitet von: ${order.processedBy}
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+                
+                ${order.status === 'cancelled' ? `
+                    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(158,158,158,0.1); border-radius: 8px; border-left: 4px solid #9e9e9e;">
+                        <div style="font-size: 0.9rem; color: #9e9e9e; font-weight: bold;">
+                            ❌ Bestellung storniert
+                        </div>
+                        ${order.cancelReason ? `
+                            <div style="font-size: 0.8rem; color: #8d6e63; margin-top: 0.25rem;">
+                                Grund: ${getReasonText(order.cancelReason)}
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="order-card-actions" onclick="event.stopPropagation();">
+                <button class="action-btn view" onclick="showCustomerOrderDetails('${order.orderId}')" style="background: #2196f3;">
+                    👁️ Details ansehen
+                </button>
+                ${canCancel ? `
+                    <button class="action-btn delete" onclick="requestOrderCancellation('${order.orderId}')" style="background: #f44336;">
+                        ❌ Stornieren
+                    </button>
+                ` : ''}
+                ${hasCancellationRequest ? `
+                    <button class="action-btn" onclick="showCancellationRequestInfo('${order.orderId}')" style="background: #ff9800;">
+                        ⏳ Stornierung läuft
+                    </button>
+                ` : ''}
+                ${order.status === 'completed' ? `
+                    <button class="action-btn" onclick="reorderItems('${order.orderId}')" style="background: #4caf50;">
+                        🔄 Erneut bestellen
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Erweiterte Order-Card für "Neue Bestellungen" mit Stornierungsanfrage-Anzeige
+function createOrderCard(order, type) {
+    const borderColor = type === 'new' ? '#f44336' : '#ff9800';
+    const statusLabel = type === 'new' ? 'NEU' : 'IN ARBEIT';
+    const statusBg = type === 'new' ? '#f44336' : '#ff9800';
+    const hasCancellationRequest = hasActiveCancellationRequest(order);
+
+    return `
+        <div class="cart-item" style="border-left: 4px solid ${borderColor};">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <strong>Bestellung #${order.orderId}</strong>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="background: ${statusBg}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">${statusLabel}</span>
+                        ${hasCancellationRequest ? `
+                            <span style="background: #ff9800; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; animation: pulse 2s infinite;">
+                                ⚠️ STORNIERUNG ANGEFRAGT!
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Kunde:</strong> ${order.customerName} (${order.customerEmail})<br>
+                    <strong>Bestellt am:</strong> ${new Date(order.orderDate).toLocaleString('de-DE')}<br>
+                    <strong>Artikel:</strong> ${order.items.length} Produkt(e)
+                    ${order.processedBy ? `<br><strong>Bearbeiter:</strong> ${order.processedBy}` : ''}
+                </div>
+                
+                ${hasCancellationRequest ? `
+                    <div style="margin-bottom: 0.5rem; padding: 0.8rem; background: rgba(255,152,0,0.1); border-radius: 8px; border-left: 3px solid #ff9800;">
+                        <strong style="color: #ff9800;">📨 Kunden-Stornierungsanfrage:</strong><br>
+                        <small style="color: #8d6e63;">
+                            Angefragt am: ${new Date(order.customerCancellationRequest.requestedAt).toLocaleString('de-DE')}<br>
+                            Grund: ${order.customerCancellationRequest.reason}
+                        </small>
+                    </div>
+                ` : ''}
+                
+                <div style="font-size: 0.9rem; color: #8d6e63; margin-bottom: 0.5rem;">
+                    ${order.items.map(item => `${item.name} (${item.quantity}x €${item.price.toFixed(2)})`).join(', ')}
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Lieferadresse:</strong><br>
+                    ${order.shippingAddress.address}<br>
+                    ${order.shippingAddress.zip} ${order.shippingAddress.city}, ${order.shippingAddress.country}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Zahlungsmethode:</strong> ${order.paymentMethod}<br>
+                        <strong>Tracking:</strong> ${order.trackingNumber}
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.2rem; font-weight: bold; color: #ff6b35;">€${order.total.toFixed(2)}</div>
+                        ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${type === 'new' ? `
+                    <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `processOrder('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                        ✅ Übernehmen
+                    </button>
+                ` : `
+                    <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                        📦 Versandbereit
+                    </button>
+                `}
+                <button class="btn" onclick="viewOrderDetailsInModal('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.5rem 1rem;">
+                    👁️ Details
+                </button>
+                <button class="btn ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" style="background: ${hasCancellationRequest ? '#ccc' : '#f44336'}; width: auto; padding: 0.5rem 1rem; cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'};">
+                    ❌ Stornieren
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Erweiterte Master Orders-Funktion mit Stornierungsanfrage-Anzeige
+function loadMasterOrders() {
+    const statusFilter = document.getElementById('orderStatusFilter');
+    
+    function renderOrders(orderList = orders) {
+        document.getElementById('masterOrdersList').innerHTML = `
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>Bestellung</th>
+                        <th>Kunde</th>
+                        <th>Artikel</th>
+                        <th>Gesamt</th>
+                        <th>Zahlung</th>
+                        <th>Status</th>
+                        <th>Datum</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orderList
+                        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                        .map(order => {
+                            const hasCancellationRequest = hasActiveCancellationRequest(order);
+                            return `
+                            <tr>
+                                <td>
+                                    <strong>#${order.orderId}</strong><br>
+                                    <small>📦 ${order.trackingNumber}</small>
+                                    ${hasCancellationRequest ? `
+                                        <br><span style="background: #ff9800; color: white; padding: 1px 4px; border-radius: 5px; font-size: 0.7rem;">
+                                            ⚠️ STORNIERUNG ANGEFRAGT
+                                        </span>
+                                    ` : ''}
+                                </td>
+                                <td>
+                                    <strong>${order.customerName}</strong><br>
+                                    <small>${order.customerEmail}</small>
+                                </td>
+                                <td>${order.items.length} Artikel</td>
+                                <td>
+                                    <div><strong>€${order.total.toFixed(2)}</strong></div>
+                                    ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+                                </td>
+                                <td>${order.paymentMethod}</td>
+                                <td>
+                                    <select class="status-select ${hasCancellationRequest ? 'select-disabled' : ''}" onchange="${hasCancellationRequest ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" value="${order.status}" ${hasCancellationRequest ? 'style="background: #f0f0f0; cursor: not-allowed;"' : ''}>
+                                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>In Bearbeitung</option>
+                                        <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Wird versendet</option>
+                                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Geliefert</option>
+                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
+                                    </select>
+                                    ${hasCancellationRequest ? `
+                                        <br><small style="color: #ff9800; font-weight: bold;">Stornierung angefragt!</small>
+                                    ` : ''}
+                                </td>
+                                <td>${new Date(order.orderDate).toLocaleDateString('de-DE')}</td>
+                                <td>
+                                    <button class="action-btn view" onclick="viewOrderDetails('${order.orderId}')" title="Details anzeigen">👁️ Details</button>
+                                    ${order.status !== 'cancelled' && order.status !== 'completed' ? 
+                                        `<button class="action-btn delete ${hasCancellationRequest ? 'btn-disabled' : ''}" onclick="${hasCancellationRequest ? 'showCancellationRequestError()' : `cancelOrder('${order.orderId}')`}" title="${hasCancellationRequest ? 'Stornierungsanfrage aktiv' : 'Bestellung stornieren'}" style="cursor: ${hasCancellationRequest ? 'not-allowed' : 'pointer'}; opacity: ${hasCancellationRequest ? '0.5' : '1'};">❌ Stornieren</button>` : 
+                                        ''}
+                                </td>
+                            </tr>
+                        `;
+                        }).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    renderOrders();
+    
+    // Status filter functionality
+    statusFilter.addEventListener('change', (e) => {
+        const selectedStatus = e.target.value;
+        const filteredOrders = selectedStatus ? 
+            orders.filter(order => order.status === selectedStatus) : 
+            orders;
+        renderOrders(filteredOrders);
+    });
+}
+
+// Neue Hilfsfunktionen
+function showCancellationRequestError() {
+    showNotification('⚠️ Diese Bestellung hat eine aktive Stornierungsanfrage. Bitte genehmigen oder lehnen Sie diese zuerst in der Detail-Ansicht ab.');
+}
+
+function showCancellationRequestInfo(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order || !order.customerCancellationRequest) return;
+    
+    const request = order.customerCancellationRequest;
+    alert(`📨 Stornierungsanfrage Details:
+
+Bestellung: #${orderId}
+Angefragt von: ${request.requestedBy}
+Angefragt am: ${new Date(request.requestedAt).toLocaleString('de-DE')}
+Grund: ${request.reason}
+
+Status: Wartend auf Bearbeitung
+
+Die Stornierungsanfrage muss von einem Mitarbeiter genehmigt oder abgelehnt werden.`);
+}
+
+// Erweiterte Approve/Deny Funktionen mit UI-Updates
+function approveCancellation(orderId) {
+    if (!confirm('✅ Möchten Sie die Kunden-Stornierungsanfrage genehmigen?')) return;
+    
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    const order = orders[orderIndex];
+    const reason = order.customerCancellationRequest.reason;
+    const details = `Kundenstornierung genehmigt. Ursprünglicher Grund: ${reason}`;
+    
+    // Führe die normale Stornierung durch
+    orders[orderIndex].status = 'cancelled';
+    orders[orderIndex].cancelledBy = currentMaster.name;
+    orders[orderIndex].cancelledAt = new Date().toISOString();
+    orders[orderIndex].cancelReason = 'customer_request';
+    orders[orderIndex].cancelDetails = details;
+    orders[orderIndex].refundProcessed = true;
+    orders[orderIndex].customerCancellationApproved = true;
+    
+    // Entferne die Stornierungsanfrage
+    delete orders[orderIndex].customerCancellationRequest;
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    // Sende Bestätigungs-E-Mail
+    sendCancellationEmail(order, 'customer_request', details, true);
+    
+    logActivity('Cancellation Approved', `Customer cancellation request approved for order ${orderId} by ${currentMaster.name}`);
+    showNotification(`✅ Stornierungsanfrage für Bestellung #${orderId} wurde genehmigt.`);
+    
+    closeOrderDetails();
+    updateOrdersCounter();
+    
+    // Refresh entsprechende Listen
+    if (document.getElementById('newOrdersModal').style.display === 'block') {
+        showNewOrders();
+    }
+    if (document.getElementById('masterDashboardModal').style.display === 'block') {
+        loadMasterOrders();
+    }
+}
+
+function denyCancellation(orderId) {
+    const reason = prompt('📝 Grund für die Ablehnung der Stornierung:', 'Bestellung bereits in Bearbeitung');
+    if (!reason) return;
+    
+    if (!confirm('❌ Möchten Sie die Kunden-Stornierungsanfrage wirklich ablehnen?')) return;
+    
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    const order = orders[orderIndex];
+    
+    // Entferne die Stornierungsanfrage und markiere als abgelehnt
+    delete orders[orderIndex].customerCancellationRequest;
+    orders[orderIndex].customerCancellationDenied = {
+        deniedBy: currentMaster.name,
+        deniedAt: new Date().toISOString(),
+        reason: reason
+    };
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    // Sende Ablehnungs-E-Mail
+    const emailSubject = `Ihre Stornierungsanfrage für Bestellung #${order.orderId} - KlarKRAFT`;
+    const emailBody = `Sehr geehrte/r ${order.customerName},
+
+vielen Dank für Ihre Anfrage bezüglich der Stornierung Ihrer Bestellung #${order.orderId}.
+
+Leider können wir Ihrer Stornierungsanfrage nicht entsprechen.
+
+Grund: ${reason}
+
+Ihre Bestellung wird wie geplant bearbeitet und versendet.
+
+Bei weiteren Fragen stehen wir Ihnen gerne zur Verfügung:
+📞 +49 (0) 2151 - 892347
+📧 service@klarkraft.de
+
+Mit freundlichen Grüßen
+${currentMaster.name}
+KlarKRAFT Team`;
+
+    const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    if (confirm('📧 Möchten Sie eine Ablehnungs-E-Mail an den Kunden senden?')) {
+        window.open(mailtoLink);
+    }
+    
+    logActivity('Cancellation Denied', `Customer cancellation request denied for order ${orderId} by ${currentMaster.name}. Reason: ${reason}`);
+    showNotification(`❌ Stornierungsanfrage für Bestellung #${orderId} wurde abgelehnt.`);
+    
+    closeOrderDetails();
+    
+    // Refresh entsprechende Listen
+    if (document.getElementById('newOrdersModal').style.display === 'block') {
+        showNewOrders();
+    }
+    if (document.getElementById('masterDashboardModal').style.display === 'block') {
+        loadMasterOrders();
+    }
+}
