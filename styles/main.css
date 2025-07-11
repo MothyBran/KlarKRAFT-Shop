@@ -1682,17 +1682,3 @@
     border-color: #ff6b35;
     box-shadow: 0 4px 15px rgba(255,107,53,0.1);
 }
-
-/* Alle Elemente mit hellem Hintergrund – Text auf Schwarz setzen */
-.modal-content,
-.product-card,
-.customer-item,
-.order-item,
-.setting-item,
-.payment-form,
-.profile-page,
-.profile-section,
-.master-table,
-.chart-container {
-    color: black !important;
-}
