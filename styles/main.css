@@ -1265,3 +1265,416 @@
                     border: 3px solid #000;
                 }
             }
+/* CSS-Styles für anklickbare Bestellhistorie */
+
+/* Customer Order Card Styles */
+.customer-order-card {
+    background: rgba(255,255,255,0.95);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.customer-order-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,107,53,0.05), transparent);
+    transition: left 0.5s ease;
+}
+
+.customer-order-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-color: #ff6b35;
+}
+
+.customer-order-card:hover::before {
+    left: 100%;
+}
+
+.customer-order-card:active {
+    transform: translateY(-1px);
+}
+
+/* Order Card Header */
+.order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.order-card-header h4 {
+    font-size: 1.2rem;
+    margin: 0;
+    color: #5d4037;
+}
+
+/* Order Card Content */
+.order-card-content {
+    margin-bottom: 1rem;
+}
+
+/* Order Card Actions */
+.order-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+.order-card-actions .action-btn {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    justify-content: center;
+}
+
+/* Customer Timeline Styles */
+.customer-timeline {
+    position: relative;
+    padding: 0;
+}
+
+.customer-timeline-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+    padding-left: 3rem;
+}
+
+.customer-timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.customer-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 1.5rem;
+    top: 2.5rem;
+    width: 2px;
+    height: calc(100% + 1.5rem);
+    background: #e0e0e0;
+}
+
+.customer-timeline-item:last-child::before {
+    display: none;
+}
+
+.timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 3rem;
+    height: 3rem;
+    background: #fff;
+    border: 3px solid #e0e0e0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    z-index: 2;
+}
+
+.customer-timeline-item.completed .timeline-icon {
+    border-color: #4caf50;
+    background: #4caf50;
+    color: white;
+}
+
+.customer-timeline-item.pending .timeline-icon {
+    border-color: #ff9800;
+    background: #fff;
+    color: #ff9800;
+}
+
+.customer-timeline-item.cancelled .timeline-icon {
+    border-color: #f44336;
+    background: #f44336;
+    color: white;
+}
+
+.timeline-content {
+    flex: 1;
+    background: rgba(255,255,255,0.8);
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+}
+
+.customer-timeline-item.completed .timeline-content {
+    border-color: #4caf50;
+    background: rgba(76,175,80,0.05);
+}
+
+.customer-timeline-item.pending .timeline-content {
+    border-color: #ff9800;
+    background: rgba(255,152,0,0.05);
+}
+
+.customer-timeline-item.cancelled .timeline-content {
+    border-color: #f44336;
+    background: rgba(244,67,54,0.05);
+}
+
+.timeline-content strong {
+    color: #5d4037;
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+}
+
+.timeline-date {
+    color: #8d6e63;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-detail {
+    color: #8d6e63;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Customer Order Details Modal Improvements */
+#customerOrderDetailsModal .modal-content {
+    animation: slideInFromBottom 0.4s ease;
+    padding: 2rem;
+}
+
+@keyframes slideInFromBottom {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Order Status Badges in Customer View */
+.customer-order-card .order-status {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Responsive improvements for customer order cards */
+@media (max-width: 768px) {
+    .customer-order-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .order-card-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: left;
+    }
+    
+    .order-card-header > div:last-child {
+        text-align: left;
+    }
+    
+    .order-card-actions {
+        flex-direction: column;
+    }
+    
+    .order-card-actions .action-btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .customer-timeline-item {
+        padding-left: 2.5rem;
+    }
+    
+    .timeline-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .customer-timeline-item::before {
+        left: 1.25rem;
+    }
+    
+    /* Modal improvements for mobile */
+    #customerOrderDetailsModal .modal-content {
+        padding: 1rem;
+        margin: 2% auto;
+    }
+    
+    #customerOrderDetailsModal .modal-content > div[style*="grid-template-columns"] {
+        display: block !important;
+    }
+    
+    #customerOrderDetailsModal .modal-content > div[style*="grid-template-columns"] > div {
+        margin-bottom: 1rem;
+    }
+    
+    /* Header improvements for mobile */
+    #customerOrderDetailsModal .modal-content > div:first-of-type {
+        margin: -1rem -1rem 1rem -1rem !important;
+        padding: 1rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .customer-order-card {
+        padding: 0.8rem;
+    }
+    
+    .order-card-header h4 {
+        font-size: 1rem;
+    }
+    
+    .timeline-content {
+        padding: 0.8rem;
+    }
+    
+    .timeline-content strong {
+        font-size: 0.9rem;
+    }
+    
+    .customer-timeline-item {
+        padding-left: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .timeline-icon {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.9rem;
+    }
+    
+    .customer-timeline-item::before {
+        left: 1rem;
+    }
+}
+
+/* Hover effects for action buttons in customer cards */
+.order-card-actions .action-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Enhanced status indicators */
+.customer-order-card .status-pending {
+    animation: subtlePulse 3s infinite;
+}
+
+@keyframes subtlePulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* Print styles for customer receipts */
+@media print {
+    .customer-order-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    .order-card-actions {
+        display: none !important;
+    }
+    
+    .customer-timeline {
+        break-inside: avoid;
+    }
+}
+
+/* Focus states for accessibility */
+.customer-order-card:focus {
+    outline: 3px solid #ff6b35;
+    outline-offset: 2px;
+}
+
+.timeline-icon:focus {
+    outline: 2px solid #ff6b35;
+    outline-offset: 2px;
+}
+
+/* Enhanced visual feedback */
+.customer-order-card[data-status="pending"] {
+    border-left: 5px solid #f44336;
+}
+
+.customer-order-card[data-status="processing"] {
+    border-left: 5px solid #ff9800;
+}
+
+.customer-order-card[data-status="completed"] {
+    border-left: 5px solid #4caf50;
+}
+
+.customer-order-card[data-status="cancelled"] {
+    border-left: 5px solid #9e9e9e;
+    opacity: 0.8;
+}
+
+/* Loading state for customer actions */
+.customer-order-card.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.customer-order-card.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #ff6b35;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 10;
+}
+
+/* Enhanced grid layouts for order details */
+.order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.order-detail-card {
+    background: rgba(255,255,255,0.9);
+    padding: 1.5rem;
+    border-radius: 10px;
+    border: 2px solid #d7ccc8;
+    transition: all 0.3s ease;
+}
+
+.order-detail-card:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 4px 15px rgba(255,107,53,0.1);
+}
