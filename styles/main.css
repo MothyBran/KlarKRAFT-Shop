@@ -1683,20 +1683,26 @@
     box-shadow: 0 4px 15px rgba(255,107,53,0.1);
 }
 
-/* CSS-Styles für Stornierungsanfragen-Features */
+/* ============================================================================
+   CSS FÜR STORNIERUNGSANFRAGEN-SYSTEM MIT AUSGEGRAUTEN BUTTONS
+   ============================================================================ */
 
-/* Ausgegraute Buttons und Disabled-States */
+/* 1. AUSGEGRAUTE BUTTONS UND DISABLED STATES
+   ============================================================================ */
+
 .btn-disabled {
     background: #ccc !important;
     color: #666 !important;
     cursor: not-allowed !important;
     opacity: 0.6;
     pointer-events: none;
+    transition: none !important;
 }
 
 .btn-disabled:hover {
     transform: none !important;
     box-shadow: none !important;
+    background: #ccc !important;
 }
 
 .select-disabled {
@@ -1704,23 +1710,28 @@
     color: #666 !important;
     cursor: not-allowed !important;
     opacity: 0.7;
+    border-color: #d0d0d0 !important;
 }
 
 .select-disabled:hover {
-    border-color: #d7ccc8 !important;
+    border-color: #d0d0d0 !important;
 }
 
-/* Stornierungsanfrage-Badges */
+/* 2. STORNIERUNGSANFRAGE-BADGES
+   ============================================================================ */
+
 .cancellation-request-badge {
     background: #ff9800;
     color: white;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     animation: pulse-orange 2s infinite;
+    display: inline-block;
+    white-space: nowrap;
 }
 
 /* Pulse-Animation für Stornierungsanfragen */
@@ -1741,23 +1752,9 @@
     }
 }
 
-/* Spezielle Pulse-Animation für "STORNIERUNG ANGEFRAGT!" */
-@keyframes pulse {
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.7;
-        transform: scale(1.02);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
+/* 3. INFO-BOXEN FÜR STORNIERUNGSANFRAGEN
+   ============================================================================ */
 
-/* Stornierungsanfrage-Info-Boxen */
 .cancellation-request-info {
     background: rgba(255, 152, 0, 0.1);
     border: 1px solid #ff9800;
@@ -1771,6 +1768,7 @@
     color: #ff9800;
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
+    font-weight: bold;
 }
 
 .cancellation-request-info p {
@@ -1793,6 +1791,7 @@
     color: #f44336;
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
+    font-weight: bold;
 }
 
 .cancellation-denied-info p {
@@ -1815,56 +1814,55 @@
     color: #4caf50;
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
+    font-weight: bold;
 }
 
-/* Verbesserte Master-Tabelle für Stornierungsanfragen */
+.cancellation-approved-info p {
+    margin: 0.25rem 0;
+    font-size: 0.8rem;
+    color: #8d6e63;
+}
+
+/* 4. MASTER-TABELLE ERWEITERUNGEN
+   ============================================================================ */
+
 .master-table .cancellation-indicator {
     background: #ff9800;
     color: white;
-    padding: 1px 4px;
-    border-radius: 3px;
+    padding: 2px 6px;
+    border-radius: 4px;
     font-size: 0.7rem;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.3px;
     animation: pulse-orange 3s infinite;
+    display: inline-block;
+    margin-top: 2px;
 }
 
-/* Tooltip für disabled Buttons */
-.btn-disabled[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    z-index: 1000;
-}
+/* 5. ERWEITERTE ORDER-CARD STYLES
+   ============================================================================ */
 
-.btn-disabled[title]:hover::before {
-    content: '';
-    position: absolute;
-    bottom: 120%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: #333;
-    z-index: 1000;
-}
-
-/* Erweiterte Order-Card Styles für Stornierungsanfragen */
 .order-card-with-cancellation {
     border-left: 4px solid #ff9800 !important;
     background: rgba(255, 152, 0, 0.02);
+    position: relative;
 }
 
 .order-card-with-cancellation::before {
     background: linear-gradient(90deg, transparent, rgba(255, 152, 0, 0.1), transparent);
+}
+
+.order-card-with-cancellation::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 20px 20px 0;
+    border-color: transparent #ff9800 transparent transparent;
 }
 
 /* Status-Badge-Container für mehrere Badges */
@@ -1873,9 +1871,12 @@
     gap: 0.5rem;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
-/* Erweiterte Timeline-Styles für Stornierungsanfragen */
+/* 6. TIMELINE-ERWEITERUNGEN FÜR STORNIERUNGSANFRAGEN
+   ============================================================================ */
+
 .timeline-item-cancellation-request {
     border-left-color: #ff9800;
 }
@@ -1903,7 +1904,9 @@
     border-color: #4caf50;
 }
 
-/* Warning-Styles für kritische Aktionen */
+/* 7. WARNING-STYLES FÜR KRITISCHE AKTIONEN
+   ============================================================================ */
+
 .warning-action {
     background: #ff9800 !important;
     border: 2px solid #f57c00;
@@ -1919,17 +1922,54 @@
     }
 }
 
-/* Mobile Optimierungen für Stornierungsanfragen */
+/* 8. TOOLTIPS FÜR DISABLED BUTTONS
+   ============================================================================ */
+
+.btn-disabled[title] {
+    position: relative;
+}
+
+.btn-disabled[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    z-index: 1000;
+    opacity: 1;
+    pointer-events: none;
+}
+
+.btn-disabled[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    z-index: 1000;
+}
+
+/* 9. MOBILE OPTIMIERUNGEN
+   ============================================================================ */
+
 @media (max-width: 768px) {
     .status-badges-container {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: flex-end;
         gap: 0.25rem;
     }
     
     .cancellation-request-badge {
         font-size: 0.7rem;
-        padding: 1px 6px;
+        padding: 2px 6px;
     }
     
     .cancellation-request-info,
@@ -1943,13 +1983,7 @@
         display: block;
         margin-top: 2px;
         text-align: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .btn-disabled[title]:hover::after,
-    .btn-disabled[title]:hover::before {
-        display: none;
+        font-size: 0.6rem;
     }
     
     .order-card-actions {
@@ -1965,10 +1999,33 @@
     }
 }
 
-/* High-Contrast Mode Support für Stornierungsanfragen */
+@media (max-width: 480px) {
+    .btn-disabled[title]:hover::after,
+    .btn-disabled[title]:hover::before {
+        display: none;
+    }
+    
+    .cancellation-request-badge {
+        font-size: 0.65rem;
+        padding: 1px 4px;
+    }
+    
+    .status-badges-container {
+        gap: 0.2rem;
+    }
+    
+    .order-card-with-cancellation::after {
+        border-width: 0 15px 15px 0;
+    }
+}
+
+/* 10. HIGH-CONTRAST MODE SUPPORT
+   ============================================================================ */
+
 @media (prefers-contrast: high) {
     .cancellation-request-badge {
         border: 2px solid #ff9800;
+        font-weight: bolder;
     }
     
     .btn-disabled {
@@ -1979,49 +2036,56 @@
     .cancellation-denied-info,
     .cancellation-approved-info {
         border-width: 2px;
+        font-weight: bold;
+    }
+    
+    .master-table .cancellation-indicator {
+        border: 1px solid #fff;
     }
 }
 
-/* Dark Mode Support für Stornierungsanfragen */
+/* 11. DARK MODE SUPPORT
+   ============================================================================ */
+
 @media (prefers-color-scheme: dark) {
     .cancellation-request-info {
         background: rgba(255, 152, 0, 0.2);
         border-color: #ffb74d;
+        color: #e0e0e0;
     }
     
     .cancellation-denied-info {
         background: rgba(244, 67, 54, 0.2);
         border-color: #ef5350;
+        color: #e0e0e0;
     }
     
     .cancellation-approved-info {
         background: rgba(76, 175, 80, 0.2);
         border-color: #66bb6a;
+        color: #e0e0e0;
     }
     
     .btn-disabled {
         background: #444 !important;
         color: #888 !important;
+        border-color: #555;
     }
     
     .select-disabled {
         background-color: #333 !important;
         color: #888 !important;
+        border-color: #555;
+    }
+    
+    .order-card-with-cancellation {
+        background: rgba(255, 152, 0, 0.05);
     }
 }
 
-/* Focus States für Accessibility */
-.btn-disabled:focus {
-    outline: 2px solid #ff9800;
-    outline-offset: 2px;
-}
+/* 12. PRINT-STYLES
+   ============================================================================ */
 
-.select-disabled:focus {
-    outline: 2px solid #ff9800;
-    outline-offset: 2px;
-}
-
-/* Print-Styles für Stornierungsanfragen */
 @media print {
     .cancellation-request-badge,
     .btn-disabled,
@@ -2030,6 +2094,7 @@
         color: black !important;
         border: 1px solid black !important;
         animation: none !important;
+        -webkit-print-color-adjust: exact;
     }
     
     .cancellation-request-info,
@@ -2037,10 +2102,22 @@
     .cancellation-approved-info {
         background: white !important;
         border: 1px solid black !important;
+        -webkit-print-color-adjust: exact;
+    }
+    
+    .order-card-with-cancellation::after {
+        display: none;
+    }
+    
+    .btn-disabled[title]:hover::after,
+    .btn-disabled[title]:hover::before {
+        display: none !important;
     }
 }
 
-/* Loading-Animation für Stornierungsaktionen */
+/* 13. LOADING-ANIMATION FÜR STORNIERUNGSAKTIONEN
+   ============================================================================ */
+
 .cancellation-loading {
     position: relative;
     pointer-events: none;
@@ -2062,7 +2139,14 @@
     z-index: 10;
 }
 
-/* Erfolgs-Animation für genehmigte Stornierungen */
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 14. ERFOLGS- UND FEHLER-ANIMATIONEN
+   ============================================================================ */
+
 @keyframes success-flash {
     0% { background-color: rgba(76, 175, 80, 0.1); }
     50% { background-color: rgba(76, 175, 80, 0.3); }
@@ -2073,7 +2157,6 @@
     animation: success-flash 1s ease-in-out;
 }
 
-/* Error-Animation für abgelehnte Stornierungen */
 @keyframes error-flash {
     0% { background-color: rgba(244, 67, 54, 0.1); }
     50% { background-color: rgba(244, 67, 54, 0.3); }
@@ -2083,3 +2166,73 @@
 .cancellation-error {
     animation: error-flash 1s ease-in-out;
 }
+
+/* 15. ACCESSIBILITY VERBESSERUNGEN
+   ============================================================================ */
+
+.btn-disabled:focus,
+.select-disabled:focus {
+    outline: 2px solid #ff9800;
+    outline-offset: 2px;
+}
+
+/* Screen Reader Support */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+/* Focus-visible für bessere Keyboard-Navigation */
+.btn-disabled:focus-visible {
+    outline: 3px solid #ff9800;
+    outline-offset: 2px;
+}
+
+/* 16. SPEZIELLE HOVER-EFFEKTE FÜR AKTIVE ELEMENTE
+   ============================================================================ */
+
+.cancellation-request-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.master-table .cancellation-indicator:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+/* 17. ERWEITERTE BUTTON-STATES
+   ============================================================================ */
+
+.btn-pending-cancellation {
+    background: linear-gradient(135deg, #ff9800, #ffb74d) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-pending-cancellation::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* ============================================================================
+   ENDE DES CSS FÜR STORNIERUNGSANFRAGEN-SYSTEM
+   ============================================================================ */
