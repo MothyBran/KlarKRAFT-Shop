@@ -4063,3 +4063,352 @@ function closeCustomerOrderDetails() {
         modal.remove();
     }
 }
+
+// Vereinheitlichte Funktion für ausführliche Bestelldetails
+// Diese Funktion ersetzt sowohl viewOrderDetails als auch viewOrderDetailsInModal
+
+function viewOrderDetails(orderId) {
+    // Weiterleitung an die ausführliche Modal-Ansicht
+    viewOrderDetailsInModal(orderId);
+}
+
+function viewOrderDetailsInModal(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
+    
+    const detailsHtml = `
+        <div id="orderDetailsModal" class="modal" style="display: block;">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+                <span class="close" onclick="closeOrderDetails()">&times;</span>
+                <h2 style="color: #ff6b35; margin-bottom: 2rem;">📦 Bestelldetails #${order.orderId}</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <!-- Kunden-Informationen -->
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">👤 Kunde</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <p><strong>Name:</strong> ${order.customerName}</p>
+                            <p><strong>E-Mail:</strong> ${order.customerEmail}</p>
+                            <p><strong>Telefon:</strong> ${order.customerPhone || 'Nicht angegeben'}</p>
+                            <p><strong>Kunden-ID:</strong> ${order.customerId}</p>
+                        </div>
+                    </div>
+
+                    <!-- Bestell-Informationen -->
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">📋 Bestellung</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <p><strong>Bestell-ID:</strong> ${order.orderId}</p>
+                            <p><strong>Datum:</strong> ${new Date(order.orderDate).toLocaleString('de-DE')}</p>
+                            <p><strong>Status:</strong> <span class="order-status status-${order.status}">${getStatusText(order.status)}</span></p>
+                            <p><strong>Tracking:</strong> ${order.trackingNumber}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Artikel-Liste -->
+                <div class="detail-section" style="margin-bottom: 2rem;">
+                    <h3 style="color: #8d6e63; margin-bottom: 1rem;">🛍️ Bestellte Artikel</h3>
+                    <div style="background: rgba(255,255,255,0.7); border-radius: 8px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: #8d6e63; color: white;">
+                                <tr>
+                                    <th style="padding: 0.8rem; text-align: left;">Artikel</th>
+                                    <th style="padding: 0.8rem; text-align: center;">Menge</th>
+                                    <th style="padding: 0.8rem; text-align: right;">Einzelpreis</th>
+                                    <th style="padding: 0.8rem; text-align: right;">Gesamt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${order.items.map(item => `
+                                    <tr style="border-bottom: 1px solid #e0e0e0;">
+                                        <td style="padding: 0.8rem;">${item.name}</td>
+                                        <td style="padding: 0.8rem; text-align: center;">${item.quantity}x</td>
+                                        <td style="padding: 0.8rem; text-align: right;">€${item.price.toFixed(2)}</td>
+                                        <td style="padding: 0.8rem; text-align: right; font-weight: bold;">€${item.total.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <!-- Lieferadresse -->
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">🏠 Lieferadresse</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <p>${order.customerName}</p>
+                            <p>${order.shippingAddress.address}</p>
+                            <p>${order.shippingAddress.zip} ${order.shippingAddress.city}</p>
+                            <p>${order.shippingAddress.country}</p>
+                        </div>
+                    </div>
+
+                    <!-- Kosten-Aufschlüsselung -->
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">💰 Kosten</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Zwischensumme:</span>
+                                <span>€${subtotal.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Versandkosten:</span>
+                                <span>${order.shippingCost > 0 ? '€' + order.shippingCost.toFixed(2) : 'KOSTENLOS'}</span>
+                            </div>
+                            <hr style="margin: 0.5rem 0;">
+                            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; color: #ff6b35;">
+                                <span>Gesamtsumme:</span>
+                                <span>€${order.total.toFixed(2)}</span>
+                            </div>
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.9rem; color: #8d6e63;">
+                                <strong>Zahlungsmethode:</strong> ${order.paymentMethod}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bearbeitungs-Verlauf -->
+                ${getOrderProcessingHistory(order)}
+
+                <!-- Mitarbeiter-Informationen (falls vorhanden) -->
+                ${getMasterOrderInfo(order)}
+
+                <!-- Aktions-Buttons -->
+                <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+                    ${order.status === 'pending' ? `
+                        <button class="btn" onclick="processOrder('${order.orderId}'); closeOrderDetails();" style="background: #4caf50;">
+                            ✅ Bearbeitung übernehmen
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status !== 'cancelled' && order.status !== 'completed' ? `
+                        <button class="btn" onclick="closeOrderDetails(); cancelOrderFromModal('${order.orderId}');" style="background: #f44336;">
+                            ❌ Stornieren
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status === 'processing' ? `
+                        <button class="btn" onclick="markAsCompleted('${order.orderId}'); closeOrderDetails();" style="background: #ff9800;">
+                            📦 Als versendet markieren
+                        </button>
+                    ` : ''}
+                    
+                    <button class="btn" onclick="printOrderDetails('${order.orderId}')" style="background: #2196f3;">
+                        🖨️ Drucken
+                    </button>
+                    
+                    ${currentMaster ? `
+                        <button class="btn" onclick="sendCustomerEmail('${order.orderId}')" style="background: #9c27b0;">
+                            📧 Kunde kontaktieren
+                        </button>
+                    ` : ''}
+                    
+                    <button class="btn" onclick="closeOrderDetails()" style="background: #9e9e9e;">
+                        Schließen
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', detailsHtml);
+    logActivity('View Order Details', `Viewed details for order ${order.orderId}`);
+}
+
+// Erweiterte Funktion für Mitarbeiter-Informationen in der Bestellansicht
+function getMasterOrderInfo(order) {
+    if (!currentMaster) return '';
+    
+    let masterInfoHtml = `
+        <div class="detail-section" style="margin-bottom: 2rem;">
+            <h3 style="color: #8d6e63; margin-bottom: 1rem;">👔 Mitarbeiter-Informationen</h3>
+            <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+    `;
+
+    // Aktueller Mitarbeiter
+    masterInfoHtml += `
+        <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 8px;">
+            <p><strong>🔐 Aktueller Mitarbeiter:</strong> ${currentMaster.name}</p>
+            <p><strong>📋 Rolle:</strong> ${currentMaster.role}</p>
+            <p><strong>🆔 Session:</strong> ${currentMaster.sessionId}</p>
+            <p><strong>⏰ Angemeldet seit:</strong> ${new Date(currentMaster.loginTime).toLocaleString('de-DE')}</p>
+        </div>
+    `;
+
+    // Bearbeitungs-Informationen
+    if (order.processedBy) {
+        masterInfoHtml += `
+            <div style="margin-bottom: 1rem;">
+                <p><strong>👤 Bearbeitet von:</strong> ${order.processedBy}</p>
+                <p><strong>📅 Bearbeitung gestartet:</strong> ${new Date(order.processedAt).toLocaleString('de-DE')}</p>
+                ${order.assignedRole ? `<p><strong>📋 Rolle:</strong> ${order.assignedRole}</p>` : ''}
+            </div>
+        `;
+    }
+
+    // Status-Updates
+    if (order.statusUpdatedBy) {
+        masterInfoHtml += `
+            <div style="margin-bottom: 1rem;">
+                <p><strong>🔄 Status geändert von:</strong> ${order.statusUpdatedBy}</p>
+                <p><strong>📅 Letzte Änderung:</strong> ${new Date(order.statusUpdatedAt).toLocaleString('de-DE')}</p>
+            </div>
+        `;
+    }
+
+    // Stornierung (falls vorhanden)
+    if (order.status === 'cancelled' && order.cancelledBy) {
+        masterInfoHtml += `
+            <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(244,67,54,0.1); border-radius: 8px;">
+                <p><strong>❌ Storniert von:</strong> ${order.cancelledBy}</p>
+                <p><strong>📅 Storniert am:</strong> ${new Date(order.cancelledAt).toLocaleString('de-DE')}</p>
+                <p><strong>📝 Grund:</strong> ${order.cancelReason || 'Nicht angegeben'}</p>
+                ${order.cancelDetails ? `<p><strong>💬 Details:</strong> ${order.cancelDetails}</p>` : ''}
+                ${order.refundProcessed ? `<p><strong>💰 Rückerstattung:</strong> ✅ Eingeleitet</p>` : ''}
+            </div>
+        `;
+    }
+
+    // Kunden-Stornierungsanfrage (falls vorhanden)
+    if (order.customerCancellationRequest) {
+        masterInfoHtml += `
+            <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,152,0,0.1); border-radius: 8px; border-left: 4px solid #ff9800;">
+                <p><strong>⚠️ Kunden-Stornierungsanfrage:</strong></p>
+                <p><strong>📅 Angefragt am:</strong> ${new Date(order.customerCancellationRequest.requestedAt).toLocaleString('de-DE')}</p>
+                <p><strong>👤 Von Kunde:</strong> ${order.customerCancellationRequest.requestedBy}</p>
+                <p><strong>📝 Grund:</strong> ${order.customerCancellationRequest.reason}</p>
+                <div style="margin-top: 1rem;">
+                    <button class="btn" onclick="approveCancellation('${order.orderId}')" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 0.5rem;">
+                        ✅ Stornierung genehmigen
+                    </button>
+                    <button class="btn" onclick="denyCancellation('${order.orderId}')" style="background: #4caf50; width: auto; padding: 0.5rem 1rem;">
+                        ❌ Ablehnen
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    masterInfoHtml += `
+            </div>
+        </div>
+    `;
+
+    return masterInfoHtml;
+}
+
+// Neue Funktion: Kunde per E-Mail kontaktieren
+function sendCustomerEmail(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const subject = prompt('📧 E-Mail Betreff:', `Ihre Bestellung #${order.orderId} - KlarKRAFT`);
+    if (!subject) return;
+
+    const message = prompt('📝 Nachricht an ' + order.customerName + ':', 
+        `Sehr geehrte/r ${order.customerName},\n\nbezüglich Ihrer Bestellung #${order.orderId} möchten wir Sie informieren:\n\n[Ihre Nachricht hier]\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\n${currentMaster.name}\nKlarKRAFT Team`);
+    
+    if (!message) return;
+
+    // Create mailto link
+    const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+    
+    // Open email client
+    window.open(mailtoLink);
+    
+    logActivity('Customer Email', `Email sent to customer ${order.customerName} (${order.customerEmail}) regarding order ${order.orderId}`);
+    showNotification(`📧 E-Mail-Client geöffnet für Kunde ${order.customerName}`);
+}
+
+// Neue Funktionen für Kunden-Stornierungsanfragen
+function approveCancellation(orderId) {
+    if (!confirm('✅ Möchten Sie die Kunden-Stornierungsanfrage genehmigen?')) return;
+    
+    const reason = order.customerCancellationRequest.reason;
+    const details = `Kundenstornierung genehmigt. Ursprünglicher Grund: ${reason}`;
+    
+    // Führe die normale Stornierung durch
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    const order = orders[orderIndex];
+    
+    orders[orderIndex].status = 'cancelled';
+    orders[orderIndex].cancelledBy = currentMaster.name;
+    orders[orderIndex].cancelledAt = new Date().toISOString();
+    orders[orderIndex].cancelReason = 'customer_request';
+    orders[orderIndex].cancelDetails = details;
+    orders[orderIndex].refundProcessed = true;
+    orders[orderIndex].customerCancellationApproved = true;
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    // Sende Bestätigungs-E-Mail
+    sendCancellationEmail(order, 'customer_request', details, true);
+    
+    logActivity('Cancellation Approved', `Customer cancellation request approved for order ${orderId} by ${currentMaster.name}`);
+    showNotification(`✅ Stornierungsanfrage für Bestellung #${orderId} wurde genehmigt.`);
+    
+    closeOrderDetails();
+    loadMasterOrders(); // Refresh order list
+}
+
+function denyCancellation(orderId) {
+    const reason = prompt('📝 Grund für die Ablehnung der Stornierung:', 'Bestellung bereits in Bearbeitung');
+    if (!reason) return;
+    
+    if (!confirm('❌ Möchten Sie die Kunden-Stornierungsanfrage wirklich ablehnen?')) return;
+    
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    const order = orders[orderIndex];
+    
+    // Entferne die Stornierungsanfrage
+    delete orders[orderIndex].customerCancellationRequest;
+    orders[orderIndex].customerCancellationDenied = {
+        deniedBy: currentMaster.name,
+        deniedAt: new Date().toISOString(),
+        reason: reason
+    };
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    // Sende Ablehnungs-E-Mail
+    const emailSubject = `Ihre Stornierungsanfrage für Bestellung #${order.orderId} - KlarKRAFT`;
+    const emailBody = `Sehr geehrte/r ${order.customerName},
+
+vielen Dank für Ihre Anfrage bezüglich der Stornierung Ihrer Bestellung #${order.orderId}.
+
+Leider können wir Ihrer Stornierungsanfrage nicht entsprechen.
+
+Grund: ${reason}
+
+Ihre Bestellung wird wie geplant bearbeitet und versendet.
+
+Bei weiteren Fragen stehen wir Ihnen gerne zur Verfügung:
+📞 +49 (0) 2151 - 892347
+📧 service@klarkraft.de
+
+Mit freundlichen Grüßen
+${currentMaster.name}
+KlarKRAFT Team`;
+
+    const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    if (confirm('📧 Möchten Sie eine Ablehnungs-E-Mail an den Kunden senden?')) {
+        window.open(mailtoLink);
+    }
+    
+    logActivity('Cancellation Denied', `Customer cancellation request denied for order ${orderId} by ${currentMaster.name}. Reason: ${reason}`);
+    showNotification(`❌ Stornierungsanfrage für Bestellung #${orderId} wurde abgelehnt.`);
+    
+    closeOrderDetails();
+    loadMasterOrders(); // Refresh order list
+}
