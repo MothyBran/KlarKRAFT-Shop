@@ -1,370 +1,793 @@
-// ========== OPTIONAL FIREBASE INTEGRATION FÜR KLARKRAFT ==========
-// Diese Datei separat als firebase-integration.js speichern und optional einbinden
+// ========== KLARKRAFT FIREBASE CLOUD SYNCHRONISATION (DEBUG VERSION) ==========
+// Verbesserte Integration mit erweiterten Debugging-Features
 
-// Firebase Configuration (bereits in index.html vorhanden)
-// Stelle sicher, dass Firebase bereits initialisiert ist
+// ========== DEBUG & LOGGING ==========
+const DEBUG_MODE = true;
+function debugLog(message, data = null) {
+    if (DEBUG_MODE) {
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`🔧 [${timestamp}] Firebase Debug:`, message, data || '');
+    }
+}
 
-// ========== FIREBASE HELPER FUNCTIONS ==========
-let firebaseReady = false;
+// ========== FIREBASE INITIALIZATION ==========
+let firebaseApp = null;
+let firestore = null;
+let isFirebaseAvailable = false;
+let lastSyncTime = null;
+let syncInProgress = false;
+let autoSyncInterval = null;
+let initializationAttempts = 0;
+const MAX_INIT_ATTEMPTS = 5;
 
-// Prüfe ob Firebase verfügbar ist
-function checkFirebaseAvailability() {
+// Verbesserte Firebase-Initialisierung
+async function initializeFirebase() {
+    initializationAttempts++;
+    debugLog(`Initialisierung Versuch ${initializationAttempts}/${MAX_INIT_ATTEMPTS}`);
+    
     try {
-        return typeof window.firebase !== 'undefined' && window.firebase.apps.length > 0;
+        // Schritt 1: Prüfe ob Firebase App verfügbar ist
+        if (!window.firebaseApp) {
+            debugLog('❌ window.firebaseApp nicht verfügbar');
+            updateSyncStatus('offline', 'Firebase App nicht gefunden');
+            return false;
+        }
+        
+        firebaseApp = window.firebaseApp;
+        debugLog('✅ Firebase App gefunden', firebaseApp);
+        
+        // Schritt 2: Importiere Firestore dynamisch
+        debugLog('📦 Importiere Firestore...');
+        const firestoreModule = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+        debugLog('✅ Firestore-Modul importiert', Object.keys(firestoreModule));
+        
+        // Schritt 3: Initialisiere Firestore
+        firestore = firestoreModule.getFirestore(firebaseApp);
+        debugLog('✅ Firestore initialisiert', firestore);
+        
+        // Schritt 4: Teste Verbindung
+        debugLog('🔍 Teste Firestore-Verbindung...');
+        const testResult = await testFirestoreConnection(firestoreModule);
+        
+        if (testResult) {
+            isFirebaseAvailable = true;
+            debugLog('🎉 Firebase erfolgreich initialisiert!');
+            updateSyncStatus('available', 'Erfolgreich initialisiert');
+            
+            // Auto-Sync starten
+            startAutoSync();
+            
+            // Initial-Sync nach kurzer Verzögerung
+            setTimeout(() => {
+                if (window.currentMaster) {
+                    debugLog('👔 Master erkannt - starte Initial-Sync');
+                    manualSync();
+                }
+            }, 3000);
+            
+            return true;
+        } else {
+            throw new Error('Firestore-Verbindungstest fehlgeschlagen');
+        }
+        
     } catch (error) {
-        console.warn('Firebase nicht verfügbar:', error);
+        debugLog('❌ Firebase Initialisierung fehlgeschlagen:', error);
+        updateSyncStatus('error', `Init-Fehler: ${error.message}`);
+        
+        // Retry-Mechanismus
+        if (initializationAttempts < MAX_INIT_ATTEMPTS) {
+            debugLog(`🔄 Retry in 3 Sekunden... (${initializationAttempts}/${MAX_INIT_ATTEMPTS})`);
+            setTimeout(() => {
+                initializeFirebase();
+            }, 3000);
+        } else {
+            debugLog('💀 Maximale Versuche erreicht - Firebase bleibt deaktiviert');
+            updateSyncStatus('offline', 'Initialisierung fehlgeschlagen');
+        }
+        
         return false;
     }
 }
 
-// Initialisiere Firestore wenn verfügbar
-function initializeFirestore() {
-    if (!checkFirebaseAvailability()) {
-        console.log('Firebase nicht verfügbar - verwende nur localStorage');
-        return null;
-    }
-    
+// Teste Firestore-Verbindung
+async function testFirestoreConnection(firestoreModule) {
     try {
-        const db = window.firebase.firestore();
-        firebaseReady = true;
-        console.log('✅ Firebase Firestore erfolgreich initialisiert');
-        return db;
-    } catch (error) {
-        console.error('Firestore Initialisierung fehlgeschlagen:', error);
-        return null;
-    }
-}
-
-// ========== BENUTZER-SYNCHRONISATION ==========
-async function syncUserToFirebase(userData) {
-    if (!firebaseReady) return false;
-    
-    try {
-        const db = window.firebase.firestore();
-        await db.collection('users').doc(userData.customerId).set({
-            ...userData,
-            lastSync: new Date().toISOString(),
-            syncVersion: 1
+        const { doc, getDoc, setDoc } = firestoreModule;
+        const testRef = doc(firestore, 'system', 'connection_test');
+        
+        // Schreibe Test-Dokument
+        await setDoc(testRef, {
+            test: true,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent
         });
         
-        console.log(`✅ Benutzer ${userData.name} zu Firebase synchronisiert`);
-        return true;
+        // Lese Test-Dokument
+        const testDoc = await getDoc(testRef);
+        const success = testDoc.exists();
+        
+        debugLog('🔍 Verbindungstest:', success ? '✅ Erfolgreich' : '❌ Fehlgeschlagen');
+        return success;
+        
     } catch (error) {
-        console.error('Benutzer-Sync fehlgeschlagen:', error);
+        debugLog('❌ Verbindungstest-Fehler:', error);
         return false;
     }
 }
 
-async function syncOrderToFirebase(orderData) {
-    if (!firebaseReady) return false;
+// ========== SYNC STATUS MANAGEMENT ==========
+function updateSyncStatus(status, message, lastSync = null) {
+    debugLog(`📊 Status Update: ${status} - ${message}`);
     
-    try {
-        const db = window.firebase.firestore();
-        await db.collection('orders').doc(orderData.orderId).set({
-            ...orderData,
-            lastSync: new Date().toISOString(),
-            syncVersion: 1
-        });
+    const statusElement = document.getElementById('cloudStatusText');
+    const firebaseElement = document.getElementById('firebaseAvailable');
+    const lastSyncElement = document.getElementById('lastSyncTime');
+    
+    if (statusElement) {
+        switch(status) {
+            case 'available':
+                statusElement.textContent = '✅ Verbunden';
+                statusElement.style.color = '#4caf50';
+                break;
+            case 'syncing':
+                statusElement.textContent = '🔄 Synchronisiert...';
+                statusElement.style.color = '#ff9800';
+                break;
+            case 'error':
+                statusElement.textContent = '❌ Fehler';
+                statusElement.style.color = '#f44336';
+                break;
+            case 'offline':
+                statusElement.textContent = '📴 Nicht verfügbar';
+                statusElement.style.color = '#9e9e9e';
+                break;
+            case 'testing':
+                statusElement.textContent = '🔍 Wird geprüft...';
+                statusElement.style.color = '#2196f3';
+                break;
+            default:
+                statusElement.textContent = '❓ Unbekannt';
+                statusElement.style.color = '#9e9e9e';
+        }
+    }
+    
+    if (firebaseElement) {
+        firebaseElement.textContent = isFirebaseAvailable ? '✅' : '❌';
+    }
+    
+    if (lastSyncElement) {
+        if (lastSync) {
+            lastSyncTime = lastSync;
+            lastSyncElement.textContent = new Date(lastSync).toLocaleString('de-DE');
+        } else if (lastSyncTime) {
+            lastSyncElement.textContent = new Date(lastSyncTime).toLocaleString('de-DE');
+        } else {
+            lastSyncElement.textContent = 'Nie';
+        }
+    }
+    
+    // Update Sync UI
+    updateSyncUI();
+}
+
+// ========== COLLECTION HELPERS ==========
+class FirebaseCollection {
+    constructor(collectionName, localStorageKey) {
+        this.collectionName = collectionName;
+        this.localStorageKey = localStorageKey;
+        debugLog(`📁 Collection erstellt: ${collectionName} -> ${localStorageKey}`);
+    }
+    
+    getLocalData() {
+        try {
+            const data = JSON.parse(localStorage.getItem(this.localStorageKey) || '[]');
+            debugLog(`📥 Lokale Daten geladen: ${this.localStorageKey} (${data.length} Einträge)`);
+            return data;
+        } catch (error) {
+            debugLog(`❌ Fehler beim Laden lokaler Daten für ${this.localStorageKey}:`, error);
+            return [];
+        }
+    }
+    
+    setLocalData(data) {
+        try {
+            localStorage.setItem(this.localStorageKey, JSON.stringify(data));
+            debugLog(`💾 Lokale Daten gespeichert: ${this.localStorageKey} (${data.length} Einträge)`);
+            return true;
+        } catch (error) {
+            debugLog(`❌ Fehler beim Speichern lokaler Daten für ${this.localStorageKey}:`, error);
+            return false;
+        }
+    }
+    
+    async getCloudData() {
+        if (!isFirebaseAvailable) {
+            debugLog(`⚠️ Firebase nicht verfügbar für ${this.collectionName}`);
+            return [];
+        }
         
-        console.log(`✅ Bestellung ${orderData.orderId} zu Firebase synchronisiert`);
-        return true;
-    } catch (error) {
-        console.error('Bestellungs-Sync fehlgeschlagen:', error);
-        return false;
+        try {
+            const { collection, getDocs, query, orderBy } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+            const collectionRef = collection(firestore, this.collectionName);
+            const q = query(collectionRef, orderBy('lastModified', 'desc'));
+            const snapshot = await getDocs(q);
+            
+            const cloudData = [];
+            snapshot.forEach(doc => {
+                cloudData.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            debugLog(`☁️ Cloud-Daten geladen: ${this.collectionName} (${cloudData.length} Einträge)`);
+            return cloudData;
+            
+        } catch (error) {
+            debugLog(`❌ Fehler beim Laden der Cloud-Daten für ${this.collectionName}:`, error);
+            throw error;
+        }
+    }
+    
+    async saveToCloud(docId, data) {
+        if (!isFirebaseAvailable) {
+            debugLog(`⚠️ Firebase nicht verfügbar - überspringe Cloud-Speicherung für ${docId}`);
+            return false;
+        }
+        
+        try {
+            const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+            const docRef = doc(firestore, this.collectionName, docId);
+            
+            const dataWithTimestamp = {
+                ...data,
+                lastModified: new Date().toISOString(),
+                syncedAt: new Date().toISOString()
+            };
+            
+            await setDoc(docRef, dataWithTimestamp, { merge: true });
+            debugLog(`☁️ Cloud-Speicherung erfolgreich: ${this.collectionName}/${docId}`);
+            return true;
+            
+        } catch (error) {
+            debugLog(`❌ Fehler beim Speichern in Cloud für ${this.collectionName}/${docId}:`, error);
+            throw error;
+        }
+    }
+    
+    async batchSaveToCloud(dataArray) {
+        if (!isFirebaseAvailable || dataArray.length === 0) {
+            debugLog(`⚠️ Batch-Upload übersprungen: Firebase=${isFirebaseAvailable}, Items=${dataArray.length}`);
+            return false;
+        }
+        
+        try {
+            const { writeBatch, doc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+            const batch = writeBatch(firestore);
+            
+            const batchSize = 50; // Firestore Limit
+            const items = dataArray.slice(0, batchSize);
+            
+            for (const item of items) {
+                const docId = this.getDocumentId(item);
+                const docRef = doc(firestore, this.collectionName, docId);
+                
+                const dataWithTimestamp = {
+                    ...item,
+                    lastModified: new Date().toISOString(),
+                    syncedAt: new Date().toISOString()
+                };
+                
+                batch.set(docRef, dataWithTimestamp, { merge: true });
+            }
+            
+            await batch.commit();
+            debugLog(`📦 Batch-Upload erfolgreich: ${this.collectionName} (${items.length} Items)`);
+            return true;
+            
+        } catch (error) {
+            debugLog(`❌ Fehler beim Batch-Upload für ${this.collectionName}:`, error);
+            throw error;
+        }
+    }
+    
+    getDocumentId(item) {
+        if (this.collectionName === 'klarkraft_users') {
+            return item.customerId || item.email || `user_${Date.now()}`;
+        } else if (this.collectionName === 'klarkraft_orders') {
+            return item.orderId || `order_${Date.now()}`;
+        } else if (this.collectionName === 'klarkraft_activity_logs') {
+            return item.id?.toString() || `log_${Date.now()}`;
+        } else {
+            return item.id?.toString() || `doc_${Date.now()}`;
+        }
     }
 }
 
-// ========== ERWEITERTE FUNKTIONEN MIT FIREBASE SUPPORT ==========
-
-// Erweiterte updateUserData Funktion
-function updateUserDataWithFirebase() {
-    // Zuerst lokal speichern
-    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
-    const userIndex = users.findIndex(u => u.customerId === currentUser.customerId);
-    if (userIndex !== -1) {
-        users[userIndex] = currentUser;
-        localStorage.setItem('klarkraft_users', JSON.stringify(users));
+// ========== SYNC MANAGER ==========
+class SyncManager {
+    constructor() {
+        this.collections = {
+            users: new FirebaseCollection('klarkraft_users', 'klarkraft_users'),
+            orders: new FirebaseCollection('klarkraft_orders', 'klarkraft_orders'),
+            activityLogs: new FirebaseCollection('klarkraft_activity_logs', 'klarkraft_activity_logs')
+        };
+        debugLog('🎯 SyncManager initialisiert');
     }
-    localStorage.setItem('klarkraft_currentUser', JSON.stringify(currentUser));
     
-    // Dann zu Firebase synchronisieren (falls verfügbar)
-    if (firebaseReady) {
-        syncUserToFirebase(currentUser).catch(error => {
-            console.warn('Firebase Sync fehlgeschlagen, Daten nur lokal gespeichert:', error);
+    async fullSync() {
+        if (syncInProgress) {
+            debugLog('⏳ Synchronisation bereits aktiv, überspringe...');
+            return false;
+        }
+        
+        if (!isFirebaseAvailable) {
+            debugLog('⚠️ Firebase nicht verfügbar für Synchronisation');
+            return false;
+        }
+        
+        syncInProgress = true;
+        updateSyncStatus('syncing', 'Vollständige Synchronisation läuft...');
+        debugLog('🚀 Starte vollständige Synchronisation');
+        
+        try {
+            let syncResults = {
+                users: { uploaded: 0, downloaded: 0, errors: 0 },
+                orders: { uploaded: 0, downloaded: 0, errors: 0 },
+                activityLogs: { uploaded: 0, downloaded: 0, errors: 0 }
+            };
+            
+            // Upload lokale Änderungen
+            debugLog('📤 Starte Upload-Phase...');
+            for (const [key, collection] of Object.entries(this.collections)) {
+                try {
+                    const uploadResult = await this.uploadLocalChanges(collection);
+                    syncResults[key].uploaded = uploadResult;
+                    debugLog(`📤 ${key}: ${uploadResult} Items hochgeladen`);
+                } catch (error) {
+                    debugLog(`❌ Upload-Fehler für ${key}:`, error);
+                    syncResults[key].errors++;
+                }
+            }
+            
+            // Download Cloud-Änderungen
+            debugLog('📥 Starte Download-Phase...');
+            for (const [key, collection] of Object.entries(this.collections)) {
+                try {
+                    const downloadResult = await this.downloadCloudChanges(collection);
+                    syncResults[key].downloaded = downloadResult;
+                    debugLog(`📥 ${key}: ${downloadResult} Items heruntergeladen`);
+                } catch (error) {
+                    debugLog(`❌ Download-Fehler für ${key}:`, error);
+                    syncResults[key].errors++;
+                }
+            }
+            
+            // System-Einstellungen synchronisieren
+            debugLog('⚙️ Synchronisiere System-Einstellungen...');
+            await this.syncSystemSettings();
+            
+            const now = new Date().toISOString();
+            lastSyncTime = now;
+            localStorage.setItem('klarkraft_last_sync', now);
+            
+            const totalUploaded = Object.values(syncResults).reduce((sum, result) => sum + result.uploaded, 0);
+            const totalDownloaded = Object.values(syncResults).reduce((sum, result) => sum + result.downloaded, 0);
+            const totalErrors = Object.values(syncResults).reduce((sum, result) => sum + result.errors, 0);
+            
+            updateSyncStatus('available', `Sync erfolgreich: ↑${totalUploaded} ↓${totalDownloaded}`, now);
+            debugLog(`✅ Synchronisation abgeschlossen: ${totalUploaded}↑ ${totalDownloaded}↓ ${totalErrors}❌`);
+            
+            // UI aktualisieren falls Master Dashboard offen
+            if (window.currentMaster && document.getElementById('masterDashboardModal')?.style.display === 'block') {
+                setTimeout(() => {
+                    if (typeof window.loadMasterOverview === 'function') {
+                        window.loadMasterOverview();
+                    }
+                }, 1000);
+            }
+            
+            return true;
+            
+        } catch (error) {
+            debugLog('❌ Synchronisation fehlgeschlagen:', error);
+            updateSyncStatus('error', `Sync-Fehler: ${error.message}`);
+            return false;
+        } finally {
+            syncInProgress = false;
+        }
+    }
+    
+    async uploadLocalChanges(collection) {
+        const localData = collection.getLocalData();
+        if (localData.length === 0) return 0;
+        
+        const unsyncedData = localData.filter(item => {
+            return !item.syncedAt || (item.lastModified && item.lastModified > item.syncedAt);
         });
+        
+        if (unsyncedData.length === 0) return 0;
+        
+        debugLog(`📤 Upload ${unsyncedData.length} unsynced items für ${collection.collectionName}`);
+        
+        let uploadedCount = 0;
+        const batchSize = 50;
+        
+        for (let i = 0; i < unsyncedData.length; i += batchSize) {
+            const batch = unsyncedData.slice(i, i + batchSize);
+            try {
+                await collection.batchSaveToCloud(batch);
+                uploadedCount += batch.length;
+                
+                // Lokale Daten als synchronisiert markieren
+                batch.forEach(item => {
+                    const localIndex = localData.findIndex(localItem => 
+                        collection.getDocumentId(localItem) === collection.getDocumentId(item)
+                    );
+                    if (localIndex !== -1) {
+                        localData[localIndex].syncedAt = new Date().toISOString();
+                    }
+                });
+            } catch (error) {
+                debugLog(`❌ Batch-Upload-Fehler für ${collection.collectionName}:`, error);
+            }
+        }
+        
+        collection.setLocalData(localData);
+        return uploadedCount;
     }
     
-    updateUserInterface();
+    async downloadCloudChanges(collection) {
+        try {
+            const cloudData = await collection.getCloudData();
+            const localData = collection.getLocalData();
+            
+            let downloadedCount = 0;
+            let mergedData = [...localData];
+            
+            cloudData.forEach(cloudItem => {
+                const docId = collection.getDocumentId(cloudItem);
+                const localIndex = mergedData.findIndex(localItem => 
+                    collection.getDocumentId(localItem) === docId
+                );
+                
+                if (localIndex === -1) {
+                    mergedData.push(cloudItem);
+                    downloadedCount++;
+                } else {
+                    const localItem = mergedData[localIndex];
+                    const cloudModified = new Date(cloudItem.lastModified || 0);
+                    const localModified = new Date(localItem.lastModified || 0);
+                    
+                    if (cloudModified > localModified) {
+                        mergedData[localIndex] = { ...cloudItem };
+                        downloadedCount++;
+                    }
+                }
+            });
+            
+            collection.setLocalData(mergedData);
+            return downloadedCount;
+            
+        } catch (error) {
+            debugLog(`❌ Download-Fehler für ${collection.collectionName}:`, error);
+            throw error;
+        }
+    }
+    
+    async syncSystemSettings() {
+        try {
+            const settings = {
+                demoMode: localStorage.getItem('klarkraft_demo_mode') === 'true',
+                lastSync: lastSyncTime,
+                version: '1.0.0',
+                syncedBy: window.currentMaster?.name || 'System',
+                lastModified: new Date().toISOString()
+            };
+            
+            const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+            const settingsRef = doc(firestore, 'klarkraft_settings', 'system');
+            await setDoc(settingsRef, settings, { merge: true });
+            
+            debugLog('⚙️ System-Einstellungen synchronisiert');
+            return true;
+        } catch (error) {
+            debugLog('❌ Fehler beim Synchronisieren der System-Einstellungen:', error);
+            return false;
+        }
+    }
 }
 
-// Erweiterte completeOrder Funktion
-function completeOrderWithFirebase(orderData) {
-    // Zuerst lokal speichern
-    orders.push(orderData);
-    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
-    
-    // Dann zu Firebase synchronisieren (falls verfügbar)
-    if (firebaseReady) {
-        syncOrderToFirebase(orderData).catch(error => {
-            console.warn('Firebase Sync fehlgeschlagen, Bestellung nur lokal gespeichert:', error);
-        });
-    }
-}
+// ========== GLOBAL SYNC MANAGER ==========
+const syncManager = new SyncManager();
 
-// ========== DATEN AUS FIREBASE LADEN ==========
-async function loadUsersFromFirebase() {
-    if (!firebaseReady) {
-        return JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+// ========== AUTO SYNC FUNCTIONS ==========
+function startAutoSync() {
+    if (autoSyncInterval) {
+        clearInterval(autoSyncInterval);
     }
     
-    try {
-        const db = window.firebase.firestore();
-        const snapshot = await db.collection('users').get();
-        const firebaseUsers = [];
-        
-        snapshot.forEach(doc => {
-            firebaseUsers.push({ id: doc.id, ...doc.data() });
-        });
-        
-        console.log(`📥 ${firebaseUsers.length} Benutzer aus Firebase geladen`);
-        return firebaseUsers;
-    } catch (error) {
-        console.error('Laden aus Firebase fehlgeschlagen:', error);
-        return JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
-    }
-}
-
-async function loadOrdersFromFirebase() {
-    if (!firebaseReady) {
-        return JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
-    }
-    
-    try {
-        const db = window.firebase.firestore();
-        const snapshot = await db.collection('orders').orderBy('orderDate', 'desc').get();
-        const firebaseOrders = [];
-        
-        snapshot.forEach(doc => {
-            firebaseOrders.push({ id: doc.id, ...doc.data() });
-        });
-        
-        console.log(`📥 ${firebaseOrders.length} Bestellungen aus Firebase geladen`);
-        return firebaseOrders;
-    } catch (error) {
-        console.error('Laden aus Firebase fehlgeschlagen:', error);
-        return JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
-    }
-}
-
-// ========== AUTOMATISCHE SYNCHRONISATION ==========
-async function syncAllDataToFirebase() {
-    if (!firebaseReady) {
-        console.log('Firebase nicht verfügbar - überspringe Synchronisation');
+    if (!isFirebaseAvailable) {
+        debugLog('⚠️ Auto-Sync nicht gestartet - Firebase nicht verfügbar');
         return;
     }
     
-    try {
-        // Lade lokale Daten
-        const localUsers = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
-        const localOrders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
-        
-        // Synchronisiere Benutzer
-        for (const user of localUsers) {
-            await syncUserToFirebase(user);
-            await new Promise(resolve => setTimeout(resolve, 100)); // Kleine Pause zwischen Anfragen
+    autoSyncInterval = setInterval(async () => {
+        if (isFirebaseAvailable && !syncInProgress) {
+            debugLog('🔄 Automatische Synchronisation...');
+            await syncManager.fullSync();
         }
-        
-        // Synchronisiere Bestellungen
-        for (const order of localOrders) {
-            await syncOrderToFirebase(order);
-            await new Promise(resolve => setTimeout(resolve, 100)); // Kleine Pause zwischen Anfragen
-        }
-        
-        console.log('✅ Vollständige Firebase-Synchronisation abgeschlossen');
-        
-        if (typeof showNotification === 'function') {
-            showNotification('☁️ Daten erfolgreich in die Cloud synchronisiert!');
-        }
-        
-    } catch (error) {
-        console.error('Vollständige Synchronisation fehlgeschlagen:', error);
-        
-        if (typeof showNotification === 'function') {
-            showNotification('⚠️ Cloud-Synchronisation teilweise fehlgeschlagen');
-        }
+    }, 30000); // 30 Sekunden
+    
+    debugLog('✅ Automatische Synchronisation gestartet (alle 30s)');
+}
+
+function stopAutoSync() {
+    if (autoSyncInterval) {
+        clearInterval(autoSyncInterval);
+        autoSyncInterval = null;
+        debugLog('⏹️ Automatische Synchronisation gestoppt');
     }
 }
 
-// ========== OFFLINE/ONLINE SYNCHRONISATION ==========
-function setupOfflineSync() {
-    if (!firebaseReady) return;
-    
-    // Versuche zu synchronisieren wenn online
-    window.addEventListener('online', () => {
-        console.log('📶 Internetverbindung wiederhergestellt - starte Synchronisation');
-        setTimeout(() => {
-            syncAllDataToFirebase();
-        }, 1000);
-    });
-    
-    // Warnung wenn offline
-    window.addEventListener('offline', () => {
-        console.log('📴 Internetverbindung verloren - Daten werden nur lokal gespeichert');
-        
-        if (typeof showNotification === 'function') {
-            showNotification('📴 Offline-Modus: Daten werden lokal gespeichert');
-        }
-    });
-}
+// ========== PUBLIC API FUNCTIONS ==========
 
-// ========== FIREBASE ADMIN FUNKTIONEN ==========
-async function exportFirebaseData() {
-    if (!firebaseReady) {
-        console.log('Firebase nicht verfügbar für Export');
-        return null;
+async function manualSync() {
+    debugLog('🔄 Manuelle Synchronisation gestartet');
+    
+    if (!isFirebaseAvailable) {
+        const message = 'Firebase nicht verfügbar. Internetverbindung prüfen!';
+        if (window.showNotification) {
+            window.showNotification(message, 'error');
+        }
+        updateSyncStatus('offline', 'Firebase nicht verfügbar');
+        return false;
+    }
+    
+    if (syncInProgress) {
+        if (window.showNotification) {
+            window.showNotification('Synchronisation läuft bereits...', 'info');
+        }
+        return false;
     }
     
     try {
-        const [users, orders] = await Promise.all([
-            loadUsersFromFirebase(),
-            loadOrdersFromFirebase()
-        ]);
+        if (window.showNotification) {
+            window.showNotification('🔄 Manuelle Synchronisation gestartet...', 'sync');
+        }
         
-        const exportData = {
-            exportDate: new Date().toISOString(),
-            source: 'Firebase',
-            users: users,
-            orders: orders,
-            summary: {
-                totalUsers: users.length,
-                totalOrders: orders.length,
-                totalRevenue: orders.reduce((sum, order) => sum + (order.total || 0), 0)
+        const success = await syncManager.fullSync();
+        
+        if (success) {
+            if (window.showNotification) {
+                window.showNotification('✅ Synchronisation erfolgreich abgeschlossen!', 'success');
             }
-        };
+        } else {
+            if (window.showNotification) {
+                window.showNotification('⚠️ Synchronisation mit Fehlern abgeschlossen.', 'warning');
+            }
+        }
         
-        return exportData;
+        return success;
     } catch (error) {
-        console.error('Firebase Export fehlgeschlagen:', error);
-        return null;
+        debugLog('❌ Fehler bei manueller Synchronisation:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Synchronisation fehlgeschlagen: ' + error.message, 'error');
+        }
+        return false;
     }
 }
 
-async function clearFirebaseData() {
-    if (!firebaseReady) {
-        console.log('Firebase nicht verfügbar zum Löschen');
-        return false;
-    }
+function triggerAutoSyncOnChange(dataType) {
+    if (!isFirebaseAvailable || syncInProgress) return;
+    
+    debugLog(`🔄 Auto-Sync getriggert durch ${dataType}-Änderung`);
+    
+    clearTimeout(window.autoSyncTimeout);
+    window.autoSyncTimeout = setTimeout(async () => {
+        debugLog(`🔄 Auto-Sync ausgeführt für ${dataType}`);
+        await syncManager.fullSync();
+    }, 5000);
+}
+
+async function checkCloudStatus() {
+    debugLog('🔍 Prüfe Cloud-Status...');
+    updateSyncStatus('testing', 'Verbindung wird geprüft...');
     
     try {
-        const db = window.firebase.firestore();
-        const batch = db.batch();
+        if (!window.firebaseApp) {
+            updateSyncStatus('offline', 'Firebase App nicht gefunden');
+            return false;
+        }
         
-        // Lösche alle Benutzer
-        const usersSnapshot = await db.collection('users').get();
-        usersSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
+        // Reset initialization attempts
+        initializationAttempts = 0;
+        const available = await initializeFirebase();
         
-        // Lösche alle Bestellungen
-        const ordersSnapshot = await db.collection('orders').get();
-        ordersSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-        
-        await batch.commit();
-        console.log('🗑️ Firebase Daten erfolgreich gelöscht');
-        
-        return true;
-    } catch (error) {
-        console.error('Firebase Löschen fehlgeschlagen:', error);
-        return false;
-    }
-}
-
-// ========== INITIALIZATION ==========
-function initializeFirebaseIntegration() {
-    console.log('🔥 Initialisiere Firebase Integration...');
-    
-    // Prüfe Firebase Verfügbarkeit
-    if (checkFirebaseAvailability()) {
-        const db = initializeFirestore();
-        
-        if (db) {
-            console.log('✅ Firebase Integration bereit');
+        if (available) {
+            updateSyncStatus('available', 'Verbindung erfolgreich');
             
-            // Setup offline sync
-            setupOfflineSync();
-            
-            // Initiale Synchronisation (nach 5 Sekunden)
-            setTimeout(() => {
-                console.log('🔄 Starte initiale Firebase-Synchronisation...');
-                syncAllDataToFirebase();
-            }, 5000);
+            const lastSync = localStorage.getItem('klarkraft_last_sync');
+            if (lastSync) {
+                lastSyncTime = lastSync;
+                updateSyncStatus('available', 'Verbindung erfolgreich', lastSync);
+            }
             
             return true;
+        } else {
+            updateSyncStatus('offline', 'Verbindung fehlgeschlagen');
+            return false;
         }
+    } catch (error) {
+        debugLog('❌ Fehler beim Prüfen des Cloud-Status:', error);
+        updateSyncStatus('error', 'Statusprüfung fehlgeschlagen');
+        return false;
     }
-    
-    console.log('ℹ️ Firebase Integration übersprungen - läuft im localStorage-Modus');
-    return false;
 }
 
-// ========== ERSETZE ORIGINALE FUNKTIONEN (OPTIONAL) ==========
-function enableFirebaseEnhancements() {
-    if (!firebaseReady) return;
+function updateSyncUI() {
+    const syncBtn = document.getElementById('manualSyncBtn');
+    const syncProgress = document.getElementById('syncProgress');
     
-    // Ersetze updateUserData nur wenn Firebase verfügbar ist
-    if (typeof window.updateUserData === 'function') {
-        window.originalUpdateUserData = window.updateUserData;
-        window.updateUserData = updateUserDataWithFirebase;
-        console.log('🔄 updateUserData Funktion mit Firebase erweitert');
-    }
-    
-    // Weitere Funktionen können hier erweitert werden...
-}
-
-// ========== AUTO-INITIALIZATION ==========
-// Warte auf DOM-Bereitschaft und Firebase
-document.addEventListener('DOMContentLoaded', function() {
-    // Warte kurz bis Firebase geladen ist
-    setTimeout(() => {
-        const firebaseInitialized = initializeFirebaseIntegration();
+    if (syncInProgress) {
+        if (syncBtn) {
+            syncBtn.disabled = true;
+            syncBtn.textContent = '🔄 Synchronisiert...';
+            syncBtn.style.opacity = '0.6';
+        }
         
-        if (firebaseInitialized) {
-            // Aktiviere Firebase-Erweiterungen nach weiteren 2 Sekunden
-            setTimeout(() => {
-                enableFirebaseEnhancements();
-            }, 2000);
+        if (syncProgress) {
+            syncProgress.style.display = 'block';
         }
-    }, 1000);
-});
+    } else {
+        if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.textContent = '🔄 Manuell synchronisieren';
+            syncBtn.style.opacity = '1';
+        }
+        
+        if (syncProgress) {
+            syncProgress.style.display = 'none';
+        }
+    }
+}
 
-// ========== UTILITY FUNCTIONS ==========
-function getFirebaseStatus() {
-    return {
-        available: checkFirebaseAvailability(),
-        ready: firebaseReady,
-        online: navigator.onLine
+// ========== NETWORK MONITORING ==========
+function setupNetworkMonitoring() {
+    window.addEventListener('online', async () => {
+        debugLog('🌐 Internetverbindung wiederhergestellt');
+        if (window.showNotification) {
+            window.showNotification('🌐 Internetverbindung wiederhergestellt', 'info');
+        }
+        
+        setTimeout(async () => {
+            const available = await checkCloudStatus();
+            if (available) {
+                await manualSync();
+            }
+        }, 2000);
+    });
+    
+    window.addEventListener('offline', () => {
+        debugLog('📴 Internetverbindung verloren');
+        if (window.showNotification) {
+            window.showNotification('📴 Offline-Modus: Daten werden lokal gespeichert', 'warning');
+        }
+        stopAutoSync();
+        updateSyncStatus('offline', 'Keine Internetverbindung');
+    });
+}
+
+// ========== OVERRIDE FUNCTIONS ==========
+// Erweitere bestehende Funktionen um Auto-Sync
+const originalCompleteOrder = window.completeOrder;
+const originalUpdateOrderStatus = window.updateOrderStatus;
+const originalHandleRegister = window.handleRegister;
+const originalLogActivity = window.logActivity;
+
+// Order-Funktionen erweitern
+if (typeof window.completeOrder === 'function') {
+    window.completeOrder = function(...args) {
+        const result = originalCompleteOrder.apply(this, args);
+        triggerAutoSyncOnChange('order');
+        return result;
     };
 }
 
-function manualFirebaseSync() {
-    if (firebaseReady) {
-        syncAllDataToFirebase();
-    } else {
-        console.log('Firebase nicht bereit für manuelle Synchronisation');
-        if (typeof showNotification === 'function') {
-            showNotification('⚠️ Firebase nicht verfügbar');
-        }
-    }
+if (typeof window.updateOrderStatus === 'function') {
+    window.updateOrderStatus = function(...args) {
+        const result = originalUpdateOrderStatus.apply(this, args);
+        triggerAutoSyncOnChange('order');
+        return result;
+    };
 }
 
-// Exportiere Funktionen für globale Nutzung
-window.FirebaseIntegration = {
-    sync: manualFirebaseSync,
-    status: getFirebaseStatus,
-    export: exportFirebaseData,
-    clear: clearFirebaseData
+if (typeof window.handleRegister === 'function') {
+    window.handleRegister = function(...args) {
+        const result = originalHandleRegister.apply(this, args);
+        triggerAutoSyncOnChange('user');
+        return result;
+    };
+}
+
+if (typeof window.logActivity === 'function') {
+    window.logActivity = function(...args) {
+        const result = originalLogActivity.apply(this, args);
+        triggerAutoSyncOnChange('activity');
+        return result;
+    };
+}
+
+// ========== INITIALIZATION ==========
+async function initializeCloudSync() {
+    debugLog('🚀 Initialisiere Cloud-Synchronisation...');
+    
+    // Netzwerk-Monitoring einrichten
+    setupNetworkMonitoring();
+    
+    // Initiale Status-Anzeige
+    updateSyncStatus('testing', 'Initialisierung...');
+    
+    // Warte auf Firebase
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const waitForFirebase = () => {
+        attempts++;
+        debugLog(`⏳ Warte auf Firebase... (${attempts}/${maxAttempts})`);
+        
+        if (window.firebaseApp) {
+            debugLog('✅ Firebase App gefunden - starte Initialisierung');
+            setTimeout(() => {
+                initializeFirebase();
+            }, 1000);
+        } else if (attempts < maxAttempts) {
+            setTimeout(waitForFirebase, 1000);
+        } else {
+            debugLog('❌ Firebase nach 10 Versuchen nicht gefunden');
+            updateSyncStatus('offline', 'Firebase nicht verfügbar');
+        }
+    };
+    
+    waitForFirebase();
+}
+
+// ========== GLOBAL EXPOSURE ==========
+window.manualSync = manualSync;
+window.checkCloudStatus = checkCloudStatus;
+window.triggerAutoSyncOnChange = triggerAutoSyncOnChange;
+window.isFirebaseAvailable = () => isFirebaseAvailable;
+window.syncInProgress = () => syncInProgress;
+window.updateSyncUI = updateSyncUI;
+
+// Debug-Funktionen
+window.firebaseDebug = {
+    getStatus: () => ({
+        isFirebaseAvailable,
+        syncInProgress,
+        lastSyncTime,
+        initializationAttempts,
+        firebaseApp,
+        firestore
+    }),
+    logs: () => console.log('Siehe Debug-Logs oben ⬆️'),
+    forceInit: () => initializeFirebase(),
+    testConnection: () => testFirestoreConnection()
 };
 
-console.log('🔥 Firebase Integration Modul geladen (bereit für Aktivierung)');
+// ========== AUTO-START ==========
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeCloudSync);
+} else {
+    initializeCloudSync();
+}
+
+// Listen auf Firebase Ready Event
+window.addEventListener('firebaseReady', () => {
+    debugLog('🔥 Firebase Ready Event empfangen');
+    setTimeout(() => {
+        checkCloudStatus();
+    }, 1000);
+});
+
+debugLog('🔧 Firebase Cloud-Synchronisation (Debug-Version) geladen');
