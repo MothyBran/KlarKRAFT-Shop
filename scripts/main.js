@@ -2887,6 +2887,227 @@ function cancelOrderFromModal(orderId) {
     showCancellationModal(order);
 }
 
+function showCancellationModal(order) {
+    // Prüfe ob bereits ein Stornierungsmodal offen ist
+    const existingModal = document.getElementById('cancellationModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const modalHtml = `
+        <div id="cancellationModal" class="modal" style="display: block;">
+            <div class="modal-content" style="max-width: 600px;">
+                <span class="close" onclick="closeCancellationModal()">&times;</span>
+                <h2 style="color: #f44336; margin-bottom: 2rem;">❌ Bestellung stornieren</h2>
+                
+                <div style="background: rgba(244,67,54,0.1); padding: 1rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <h3>Bestellung #${order.orderId}</h3>
+                    <p><strong>Kunde:</strong> ${order.customerName} (${order.customerEmail})</p>
+                    <p><strong>Betrag:</strong> €${order.total.toFixed(2)}</p>
+                    <p><strong>Status:</strong> ${getStatusText(order.status)}</p>
+                    <p><strong>Bestellt am:</strong> ${new Date(order.orderDate).toLocaleString('de-DE')}</p>
+                </div>
+
+                <form id="cancellationForm" onsubmit="completeCancellation(event, '${order.orderId}')">
+                    <div class="form-group">
+                        <label for="cancellationReason">Grund für die Stornierung:</label>
+                        <select id="cancellationReason" required>
+                            <option value="">Bitte wählen...</option>
+                            <option value="customer_request">Kundenwunsch</option>
+                            <option value="payment_failed">Zahlungsausfall</option>
+                            <option value="out_of_stock">Artikel nicht verfügbar</option>
+                            <option value="quality_issues">Qualitätsprobleme</option>
+                            <option value="shipping_issues">Versandprobleme</option>
+                            <option value="system_error">Systemfehler</option>
+                            <option value="other">Sonstiges</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cancellationDetails">Zusätzliche Details:</label>
+                        <textarea id="cancellationDetails" rows="4" placeholder="Weitere Informationen zur Stornierung..." style="width: 100%; padding: 0.8rem; border: 2px solid #d7ccc8; border-radius: 8px; resize: vertical;"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="sendEmailNotification" checked style="margin-right: 0.5rem;">
+                            <span>📧 E-Mail-Benachrichtigung an Kunden senden</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="refundPayment" checked style="margin-right: 0.5rem;">
+                            <span>💰 Automatische Rückerstattung veranlassen</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn" style="background: #f44336; flex: 1;">
+                            ❌ Bestellung stornieren
+                        </button>
+                        <button type="button" class="btn" onclick="closeCancellationModal()" style="background: #9e9e9e; flex: 1;">
+                            Abbrechen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function completeCancellation(event, orderId) {
+    event.preventDefault();
+    
+    const reason = document.getElementById('cancellationReason').value;
+    const details = document.getElementById('cancellationDetails').value;
+    const sendEmail = document.getElementById('sendEmailNotification').checked;
+    const refund = document.getElementById('refundPayment').checked;
+
+    if (!reason) {
+        showNotification('⚠️ Bitte wählen Sie einen Grund für die Stornierung.');
+        return;
+    }
+
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+    
+    const order = orders[orderIndex];
+
+    // Bestellung als storniert markieren
+    orders[orderIndex].status = 'cancelled';
+    orders[orderIndex].cancelledBy = currentMaster.name;
+    orders[orderIndex].cancelledAt = new Date().toISOString();
+    orders[orderIndex].cancelReason = reason;
+    orders[orderIndex].cancelDetails = details;
+    orders[orderIndex].refundProcessed = refund;
+    
+    // Timeline Event hinzufügen
+    addTimelineEvent(orders[orderIndex], 'cancelled', 'order_cancelled', 'Bestellung storniert', '❌', currentMaster.name, 'master', {
+        cancellationReason: reason,
+        note: details
+    });
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+
+    // Kundendaten aktualisieren (Bestellungen und Umsatz reduzieren)
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const userIndex = users.findIndex(u => u.customerId === order.customerId);
+    if (userIndex !== -1) {
+        users[userIndex].totalOrders = Math.max(0, (users[userIndex].totalOrders || 1) - 1);
+        users[userIndex].totalSpent = Math.max(0, (users[userIndex].totalSpent || order.total) - order.total);
+        localStorage.setItem('klarkraft_users', JSON.stringify(users));
+    }
+
+    // E-Mail senden wenn gewünscht
+    if (sendEmail) {
+        sendMasterCancellationEmail(order, reason, details, refund);
+    }
+
+    // Aktivitätslog erstellen
+    logActivity('Order Cancelled', `Order ${orderId} cancelled by ${currentMaster.name}. Reason: ${reason}`);
+    
+    // Erfolgs-Notification
+    showNotification(`✅ Bestellung #${orderId} wurde erfolgreich storniert.`);
+    
+    // Modals schließen
+    closeCancellationModal();
+    closeOrderDetails();
+    
+    // UI aktualisieren
+    updateOrdersCounter();
+    
+    // Listen neu laden wenn sie geöffnet sind
+    if (document.getElementById('newOrdersModal').style.display === 'block') {
+        showNewOrders();
+    }
+    if (document.getElementById('masterDashboardModal').style.display === 'block') {
+        loadMasterOrders();
+    }
+}
+
+function closeCancellationModal() {
+    const modal = document.getElementById('cancellationModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function sendMasterCancellationEmail(order, reason, details, refund) {
+    const reasonTexts = {
+        'customer_request': 'auf Ihren Wunsch',
+        'payment_failed': 'aufgrund von Zahlungsproblemen',
+        'out_of_stock': 'da der Artikel nicht verfügbar ist',
+        'quality_issues': 'aufgrund von Qualitätsproblemen',
+        'shipping_issues': 'aufgrund von Versandproblemen',
+        'system_error': 'aufgrund eines Systemfehlers',
+        'other': 'aus betrieblichen Gründen'
+    };
+
+    const emailSubject = `Stornierung Ihrer Bestellung #${order.orderId} - KlarKRAFT`;
+    const emailBody = `Sehr geehrte/r ${order.customerName},
+
+hiermit müssen wir Ihnen leider mitteilen, dass wir Ihre Bestellung #${order.orderId} stornieren mussten.
+
+Grund der Stornierung: ${reasonTexts[reason] || reason}
+
+${details ? `\nWeitere Informationen:\n${details}\n` : ''}
+
+Bestelldetails:
+- Bestellnummer: #${order.orderId}
+- Bestelldatum: ${new Date(order.orderDate).toLocaleDateString('de-DE')}
+- Gesamtbetrag: €${order.total.toFixed(2)}
+- Artikel: ${order.items.map(item => `${item.name} (${item.quantity}x)`).join(', ')}
+
+${refund ? `💰 RÜCKERSTATTUNG:
+Der Betrag von €${order.total.toFixed(2)} wird innerhalb der nächsten 3-5 Werktage auf Ihr Zahlungsmittel zurückerstattet.` : ''}
+
+Wir entschuldigen uns aufrichtig für die Unannehmlichkeiten und danken für Ihr Verständnis.
+
+Als Entschuldigung erhalten Sie bei Ihrer nächsten Bestellung einen Rabatt von 10% mit dem Code: SORRY10
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung:
+📞 +49 (0) 2151 - 892347
+📧 service@klarkraft.de
+
+Mit freundlichen Grüßen
+${currentMaster.name}
+KlarKRAFT Team
+
+---
+Storniert von: ${currentMaster.name} (${currentMaster.role})
+Stornierungsdatum: ${new Date().toLocaleString('de-DE')}`;
+
+    const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    showEmailPreview(order.customerEmail, emailSubject, emailBody, mailtoLink);
+}
+
+// Hilfsfunktion für Timeline Events (falls noch nicht vorhanden)
+function addTimelineEvent(order, status, event, description, icon, actor, actorType, extraData = {}) {
+    if (!order.timeline) {
+        order.timeline = [];
+    }
+    
+    const timelineEvent = {
+        timestamp: new Date().toISOString(),
+        status: status,
+        event: event,
+        description: description,
+        icon: icon,
+        actor: actor,
+        actorType: actorType,
+        ...extraData
+    };
+    
+    order.timeline.push(timelineEvent);
+}
+
 function exportAllData() {
     showNotification('📊 Datenexport wird in Kürze verfügbar sein.');
 }
