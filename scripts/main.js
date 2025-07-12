@@ -2660,8 +2660,34 @@ function exportOrdersCSV() {
     showNotification('📥 CSV-Export wird in Kürze verfügbar sein.');
 }
 
+// Stornierungsfunktion
 function cancelOrderFromModal(orderId) {
-    showNotification('❌ Stornierung wird in Kürze verfügbar sein.');
+    const order = orders.find(o => o.orderId === orderId);
+    
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+    
+    // Prüfe ob die Bestellung bereits storniert oder abgeschlossen ist
+    if (order.status === 'cancelled') {
+        showNotification('⚠️ Diese Bestellung ist bereits storniert.');
+        return;
+    }
+    
+    if (order.status === 'completed') {
+        showNotification('⚠️ Bereits abgeschlossene Bestellungen können nicht storniert werden.');
+        return;
+    }
+    
+    // Prüfe ob Aktionen erlaubt sind (keine aktive Stornierungsanfrage)
+    if (!canPerformOrderActions(order)) {
+        showCancellationRequestError();
+        return;
+    }
+    
+    // Zeige das Stornierungsmodal
+    showCancellationModal(order);
 }
 
 function exportAllData() {
