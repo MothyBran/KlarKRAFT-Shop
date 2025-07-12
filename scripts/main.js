@@ -1130,6 +1130,203 @@ function requestOrderCancellation(orderId) {
     }
 }
 
+function approveCancellation(orderId) {
+    if (!confirm('✅ Möchten Sie die Kunden-Stornierungsanfrage wirklich genehmigen?\n\nDie Bestellung wird storniert und der Kunde erhält eine Rückerstattung.')) {
+        return;
+    }
+    
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+    
+    const order = orders[orderIndex];
+    
+    if (!order.customerCancellationRequest) {
+        showNotification('❌ Keine aktive Stornierungsanfrage gefunden.');
+        return;
+    }
+    
+    const reason = order.customerCancellationRequest.reason;
+    const details = `Kundenstornierung genehmigt. Ursprünglicher Grund: ${reason}`;
+    
+    // Bestellung als storniert markieren
+    orders[orderIndex].status = 'cancelled';
+    orders[orderIndex].cancelledBy = currentMaster.name;
+    orders[orderIndex].cancelledAt = new Date().toISOString();
+    orders[orderIndex].cancelReason = 'customer_request';
+    orders[orderIndex].cancelDetails = details;
+    orders[orderIndex].refundProcessed = true;
+    orders[orderIndex].customerCancellationApproved = true;
+    
+    // Timeline Event hinzufügen
+    addTimelineEvent(orders[orderIndex], 'cancelled', 'cancellation_approved', 'Stornierung genehmigt', '✅', currentMaster.name, 'master', {
+        cancellationReason: 'customer_request',
+        note: details
+    });
+    
+    // Stornierungsanfrage entfernen
+    delete orders[orderIndex].customerCancellationRequest;
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    // Kundendaten aktualisieren
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const userIndex = users.findIndex(u => u.customerId === order.customerId);
+    if (userIndex !== -1) {
+        users[userIndex].totalOrders = Math.max(0, (users[userIndex].totalOrders || 1) - 1);
+        users[userIndex].totalSpent = Math.max(0, (users[userIndex].totalSpent || order.total) - order.total);
+        localStorage.setItem('klarkraft_users', JSON.stringify(users));
+    }
+    
+    // E-Mail an Kunden senden
+    sendCancellationApprovalEmail(order, reason, details);
+    
+    logActivity('Cancellation Approved', `Customer cancellation request approved for order ${orderId} by ${currentMaster.name}`);
+    showNotification(`✅ Stornierungsanfrage für Bestellung #${orderId} wurde genehmigt und die Bestellung storniert.`);
+    
+    // UI aktualisieren
+    closeOrderDetails();
+    updateOrdersCounter();
+    
+    // Listen neu laden wenn sie geöffnet sind
+    if (document.getElementById('newOrdersModal').style.display === 'block') {
+        showNewOrders();
+    }
+    if (document.getElementById('masterDashboardModal').style.display === 'block') {
+        loadMasterOrders();
+    }
+}
+
+function denyCancellation(orderId) {
+    const reason = prompt('📝 Grund für die Ablehnung der Stornierung:', 'Bestellung bereits in Bearbeitung');
+    if (!reason) return;
+    
+    if (!confirm('❌ Möchten Sie die Kunden-Stornierungsanfrage wirklich ablehnen?\n\nDer Kunde wird per E-Mail benachrichtigt und die Bestellung wird normal weiterbearbeitet.')) {
+        return;
+    }
+    
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+    
+    const order = orders[orderIndex];
+    
+    if (!order.customerCancellationRequest) {
+        showNotification('❌ Keine aktive Stornierungsanfrage gefunden.');
+        return;
+    }
+    
+    // Timeline Event hinzufügen
+    addTimelineEvent(orders[orderIndex], orders[orderIndex].status, 'cancellation_denied', 'Stornierung abgelehnt', '❌', currentMaster.name, 'master', {
+        note: reason
+    });
+    
+    // Stornierungsanfrage als abgelehnt markieren
+    orders[orderIndex].customerCancellationDenied = {
+        deniedBy: currentMaster.name,
+        deniedAt: new Date().toISOString(),
+        reason: reason
+    };
+    
+    // Stornierungsanfrage entfernen
+    delete orders[orderIndex].customerCancellationRequest;
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    // E-Mail an Kunden senden
+    sendCancellationDenialEmail(order, reason);
+    
+    logActivity('Cancellation Denied', `Customer cancellation request denied for order ${orderId} by ${currentMaster.name}. Reason: ${reason}`);
+    showNotification(`❌ Stornierungsanfrage für Bestellung #${orderId} wurde abgelehnt.`);
+    
+    // UI aktualisieren
+    closeOrderDetails();
+    
+    // Listen neu laden wenn sie geöffnet sind
+    if (document.getElementById('newOrdersModal').style.display === 'block') {
+        showNewOrders();
+    }
+    if (document.getElementById('masterDashboardModal').style.display === 'block') {
+        loadMasterOrders();
+    }
+}
+
+// E-Mail Funktionen für Stornierung
+function sendCancellationApprovalEmail(order, reason, details) {
+    const emailSubject = `Stornierung genehmigt - Bestellung #${order.orderId} - KlarKRAFT`;
+    const emailBody = `Sehr geehrte/r ${order.customerName},
+
+hiermit bestätigen wir die Stornierung Ihrer Bestellung #${order.orderId} auf Ihren Wunsch.
+
+Bestelldetails:
+- Bestellnummer: #${order.orderId}
+- Bestelldatum: ${new Date(order.orderDate).toLocaleDateString('de-DE')}
+- Gesamtbetrag: €${order.total.toFixed(2)}
+- Artikel: ${order.items.map(item => `${item.name} (${item.quantity}x)`).join(', ')}
+
+Ihr ursprünglicher Stornierungsgrund: ${reason}
+
+💰 RÜCKERSTATTUNG:
+Der Betrag von €${order.total.toFixed(2)} wird innerhalb der nächsten 3-5 Werktage auf Ihr Zahlungsmittel zurückerstattet.
+
+Wir bedauern, dass wir Ihre Erwartungen nicht erfüllen konnten und hoffen auf Ihr Verständnis.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung:
+📞 +49 (0) 2151 - 892347
+📧 service@klarkraft.de
+
+Mit freundlichen Grüßen
+${currentMaster.name}
+KlarKRAFT Team
+
+---
+Genehmigt von: ${currentMaster.name} (${currentMaster.role})
+Genehmigungsdatum: ${new Date().toLocaleString('de-DE')}`;
+
+    const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    showEmailPreview(order.customerEmail, emailSubject, emailBody, mailtoLink);
+}
+
+function sendCancellationDenialEmail(order, reason) {
+    const emailSubject = `Ihre Stornierungsanfrage für Bestellung #${order.orderId} - KlarKRAFT`;
+    const emailBody = `Sehr geehrte/r ${order.customerName},
+
+vielen Dank für Ihre Anfrage bezüglich der Stornierung Ihrer Bestellung #${order.orderId}.
+
+Leider können wir Ihrer Stornierungsanfrage nicht entsprechen.
+
+Grund der Ablehnung: ${reason}
+
+Bestelldetails:
+- Bestellnummer: #${order.orderId}
+- Bestelldatum: ${new Date(order.orderDate).toLocaleDateString('de-DE')}
+- Gesamtbetrag: €${order.total.toFixed(2)}
+- Aktueller Status: ${getStatusText(order.status)}
+
+Ihre Bestellung wird wie geplant bearbeitet und versendet. Sie erhalten eine separate E-Mail mit den Versandinformationen, sobald die Bestellung versendet wird.
+
+Falls Sie dennoch Fragen haben oder besondere Umstände vorliegen, kontaktieren Sie uns bitte:
+📞 +49 (0) 2151 - 892347
+📧 service@klarkraft.de
+
+Mit freundlichen Grüßen
+${currentMaster.name}
+KlarKRAFT Team
+
+---
+Abgelehnt von: ${currentMaster.name} (${currentMaster.role})
+Ablehnungsdatum: ${new Date().toLocaleString('de-DE')}`;
+
+    const mailtoLink = `mailto:${order.customerEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    showEmailPreview(order.customerEmail, emailSubject, emailBody, mailtoLink);
+}
+
 // ========== DEMO MODE FUNCTIONS ==========
 function getDemoModeState() {
     return localStorage.getItem('klarkraft_demo_mode') === 'true';
