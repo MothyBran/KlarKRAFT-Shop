@@ -481,16 +481,41 @@
                             <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
                         </div>
                         
-                        <!-- Firebase Status -->
+                        <!-- Cloud Synchronisation -->
                         <div style="margin-bottom: 2rem;">
                             <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-Synchronisation</h4>
+                            
+                            <!-- Cloud-Sync Toggle -->
+                            <div class="setting-item" style="margin-bottom: 1rem;">
+                                <div class="setting-description">
+                                    <div class="setting-title">Cloud-Synchronisation aktivieren</div>
+                                    <div class="setting-subtitle">
+                                        Automatische bidirektionale Synchronisation mit Firebase Cloud. Bei Deaktivierung werden Daten nur lokal gespeichert.
+                                    </div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="cloudSyncToggle" onchange="toggleCloudSync()" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="cloudSyncStatus" style="margin-bottom: 1rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;">
+                                ☁️ Cloud-Sync EIN - Automatische Synchronisation aktiv
+                            </div>
+                            
+                            <!-- Firebase Status -->
                             <div id="firebaseStatus" style="padding: 1rem; background: rgba(255,255,255,0.7); border-radius: 8px; margin-bottom: 1rem;">
                                 <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">Wird überprüft...</span></div>
                                 <div style="font-size: 0.9rem; color: #666;">
                                     <div>Firebase: <span id="firebaseAvailable">❓</span></div>
                                     <div>Letzte Sync: <span id="lastSyncTime">Nie</span></div>
                                 </div>
-                                <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem; margin-top: 0.5rem;">🔄 Manuell synchronisieren</button>
+                                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem;" id="manualSyncBtn">🔄 Manuell synchronisieren</button>
+                                    <button class="btn" onclick="checkCloudStatus()" style="width: auto; padding: 0.5rem 1rem; background: #2196f3;">🔍 Status prüfen</button>
+                                </div>
+                                <div id="syncProgress" style="display: none; margin-top: 1rem; padding: 0.5rem; background: rgba(33,150,243,0.1); border-radius: 5px; text-align: center;">
+                                    <div style="font-size: 0.9rem; color: #2196f3;">🔄 Synchronisation läuft...</div>
+                                </div>
                             </div>
                         </div>
                         
@@ -509,9 +534,30 @@
         </div>
     </div>
 
-    <!-- Firebase Initialization (CORRECTED) -->
+    <!-- Email Preview Modal -->
+    <div id="emailPreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="close" onclick="closeEmailPreview()">&times;</span>
+            <h2 style="color: #ff6b35; margin-bottom: 1rem;">📧 E-Mail Vorschau</h2>
+            
+            <div class="email-preview-header">
+                <div><strong>An:</strong> <span id="emailRecipient"></span></div>
+                <div><strong>Betreff:</strong> <span id="emailSubject"></span></div>
+            </div>
+            
+            <div class="email-preview-content" id="emailContent"></div>
+            
+            <div class="email-preview-actions">
+                <button class="btn" onclick="openEmailClient()" style="background: #4caf50;">📧 E-Mail-Programm öffnen</button>
+                <button class="btn" onclick="copyEmailToClipboard()" style="background: #2196f3;">📋 Text kopieren</button>
+                <button class="btn" onclick="closeEmailPreview()" style="background: #9e9e9e;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Initialization Script -->
     <script type="module">
-      // Firebase richtig initialisieren
+      // Firebase korrekt initialisieren
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
       import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
       
@@ -525,20 +571,80 @@
         measurementId: "G-9ZWTSE0FD7"
       };
     
-      const app = initializeApp(firebaseConfig);
-      const analytics = getAnalytics(app);
-      
-      // Firebase global verfügbar machen
-      window.firebaseApp = app;
-      window.firebaseAnalytics = analytics;
-      
-      console.log('🔥 Firebase korrekt initialisiert');
+      try {
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        
+        // Firebase global verfügbar machen
+        window.firebaseApp = app;
+        window.firebaseAnalytics = analytics;
+        
+        console.log('🔥 Firebase erfolgreich initialisiert');
+        
+        // Initialisierungsereignis für andere Skripte
+        window.dispatchEvent(new CustomEvent('firebaseReady', { detail: { app, analytics } }));
+        
+      } catch (error) {
+        console.error('❌ Firebase Initialisierung fehlgeschlagen:', error);
+        window.firebaseError = error;
+      }
     </script>
 
-    <!-- Load main JavaScript (inkl. Firebase Funktion) -->
+    <!-- Load Scripts in correct order -->
     <script src="scripts/main.js"></script>
     <script src="scripts/firebase-integration.js"></script>
-    <script src="scripts/enhanced-functions.js"></script>
+    
+    <script>
+        // Helper functions for email preview
+        let currentEmailData = null;
+        
+        function showEmailPreview(recipient, subject, content, mailtoLink) {
+            currentEmailData = { recipient, subject, content, mailtoLink };
+            
+            document.getElementById('emailRecipient').textContent = recipient;
+            document.getElementById('emailSubject').textContent = subject;
+            document.getElementById('emailContent').textContent = content;
+            
+            document.getElementById('emailPreviewModal').style.display = 'block';
+        }
+        
+        function closeEmailPreview() {
+            document.getElementById('emailPreviewModal').style.display = 'none';
+            currentEmailData = null;
+        }
+        
+        function openEmailClient() {
+            if (currentEmailData && currentEmailData.mailtoLink) {
+                window.open(currentEmailData.mailtoLink);
+                closeEmailPreview();
+            }
+        }
+        
+        function copyEmailToClipboard() {
+            if (currentEmailData) {
+                const emailText = `An: ${currentEmailData.recipient}\nBetreff: ${currentEmailData.subject}\n\n${currentEmailData.content}`;
+                
+                navigator.clipboard.writeText(emailText).then(() => {
+                    showNotification('📋 E-Mail-Text in Zwischenablage kopiert!');
+                }).catch(() => {
+                    // Fallback für ältere Browser
+                    const textArea = document.createElement('textarea');
+                    textArea.value = emailText;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showNotification('📋 E-Mail-Text in Zwischenablage kopiert!');
+                });
+            }
+        }
+        
+        // Global functions für E-Mail Preview
+        window.showEmailPreview = showEmailPreview;
+        window.closeEmailPreview = closeEmailPreview;
+        window.openEmailClient = openEmailClient;
+        window.copyEmailToClipboard = copyEmailToClipboard;
+    </script>
   
 </body>
 </html>
