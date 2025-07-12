@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <!-- ========== HEADBEREICH ========== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KlarKRAFT - Energetische Reinigung für Ihr Zuhause</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo" onclick="showProducts()">KlarKRAFT</div>
+                <div class="nav-buttons">
+                    <button class="nav-btn" onclick="showProducts()">Produkte</button>
+                    <button class="nav-btn" onclick="showAuth()" id="authBtn">Anmelden</button>
+                    <div class="user-info" id="userInfo">
+                        <span id="userName">Benutzer</span>
+                        <button class="logout-btn" onclick="showProfile()">Profil</button>
+                        <button class="logout-btn" onclick="logout()">Abmelden</button>
+                    </div>
+                    <div class="user-info" id="masterInfo" style="display: none;">
+                        <span id="masterName">Mitarbeiter</span>
+                        <button class="logout-btn" onclick="showMasterDashboard()">Dashboard</button>
+                        <button class="logout-btn" onclick="masterLogout()">Abmelden</button>
+                    </div>
+                    <button class="nav-btn" onclick="showCart()" id="cartBtn" style="position: relative;">
+                        Warenkorb
+                        <span class="cart-counter" id="cartCounter">0</span>
+                    </button>
+                    <button class="nav-btn" onclick="showNewOrders()" id="ordersBtn" style="position: relative; display: none;">
+                        Neue Bestellungen
+                        <span class="cart-counter" id="ordersCounter">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <main>
+            <div class="container">
+                <div class="hero">
+                    <h1>Energetische Reinigung für Ihr Zuhause</h1>
+                    <p>Befreien Sie Ihre Lebensmittel und Gegenstände von negativer Energie mit unseren hochwertigen KlarKRAFT-Produkten. Neutralisieren Sie Strichcodes und harmonisieren Sie Ihr Umfeld mit unserer speziell entwickelten Produktpalette.</p>
+                </div>
+
+                <div class="products-grid" id="productsGrid">
+                    <!-- Products will be populated by JavaScript -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Profile Page -->
+    <div class="profile-page" id="profilePage">
+        <div class="container">
+            <div class="profile-header">
+                <h2>👤 Mein Profil</h2>
+                <p>Verwalten Sie Ihre persönlichen Daten, Zahlungsmethoden und Bestellungen</p>
+                <button class="nav-btn" onclick="showProducts()" style="margin-top: 1rem;">← Zurück zum Shop</button>
+            </div>
+
+            <div class="profile-sections">
+                <!-- Personal Information -->
+                <div class="profile-section">
+                    <h3>📋 Persönliche Daten</h3>
+                    <form id="personalDataForm" onsubmit="updatePersonalData(event)">
+                        <div class="form-group">
+                            <label for="profileName">Name:</label>
+                            <input type="text" id="profileName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmail">E-Mail:</label>
+                            <input type="email" id="profileEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profilePhone">Telefon:</label>
+                            <input type="tel" id="profilePhone">
+                        </div>
+                        <button type="submit" class="btn">Daten aktualisieren</button>
+                    </form>
+
+                    <!-- Password Change Section -->
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #d7ccc8;">
+                        <h4 style="color: #ff6b35; margin-bottom: 1rem;">🔒 Passwort ändern</h4>
+                        <form id="passwordChangeForm" onsubmit="changePassword(event)">
+                            <div class="form-group">
+                                <label for="currentPassword">Aktuelles Passwort:</label>
+                                <input type="password" id="currentPassword" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newPassword">Neues Passwort:</label>
+                                <input type="password" id="newPassword" required minlength="6">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmPassword">Passwort bestätigen:</label>
+                                <input type="password" id="confirmPassword" required minlength="6">
+                            </div>
+                            <button type="submit" class="btn">Passwort ändern</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Shipping Address -->
+                <div class="profile-section">
+                    <h3>📦 Lieferadresse</h3>
+                    <form id="shippingAddressForm" onsubmit="updateShippingAddress(event)">
+                        <div class="form-group">
+                            <label for="shippingAddress">Straße und Hausnummer:</label>
+                            <input type="text" id="shippingAddress" required>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label for="shippingZip">PLZ:</label>
+                                <input type="text" id="shippingZip" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="shippingCity">Stadt:</label>
+                                <input type="text" id="shippingCity" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="shippingCountry">Land:</label>
+                            <select id="shippingCountry" required>
+                                <option value="Deutschland">Deutschland</option>
+                                <option value="Österreich">Österreich</option>
+                                <option value="Schweiz">Schweiz</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">Adresse aktualisieren</button>
+                    </form>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="profile-section">
+                    <h3>💳 Zahlungsmethoden</h3>
+                    <div id="paymentMethodsList"></div>
+                    <button class="btn" onclick="showAddPaymentMethod()">+ Neue Zahlungsmethode hinzufügen</button>
+                </div>
+
+                <!-- Order History -->
+                <div class="profile-section">
+                    <h3>📦 Bestellhistorie</h3>
+                    <div id="orderHistoryList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="background: linear-gradient(135deg, #5d4037 0%, #8d6e63 100%); color: white; padding: 3rem 0 1rem 0; margin-top: 4rem;">
+        <div class="container">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+                <!-- Unternehmensinformationen -->
+                <div>
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem; font-size: 1.3rem;">KlarKRAFT GmbH</h3>
+                    <p style="line-height: 1.6; margin-bottom: 0.5rem;">Energiestraße 15</p>
+                    <p style="line-height: 1.6; margin-bottom: 0.5rem;">47803 Krefeld</p>
+                    <p style="line-height: 1.6; margin-bottom: 0.5rem;">Deutschland</p>
+                    <p style="line-height: 1.6; margin-bottom: 0.5rem;">Tel: +49 (0) 2151 - 892347</p>
+                    <p style="line-height: 1.6; margin-bottom: 0.5rem;">E-Mail: info@klarkraft.de</p>
+                </div>
+
+                <!-- Rechtliches -->
+                <div>
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem; font-size: 1.3rem;">Rechtliches</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('impressum')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Impressum</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('agb')" style="color: white; text-decoration: none; transition: color 0.3s ease;">AGB</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('datenschutz')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Datenschutz</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('widerruf')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Widerrufsrecht</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('versand')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Versand & Zahlung</a></li>
+                    </ul>
+                </div>
+
+                <!-- Kundenservice -->
+                <div>
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem; font-size: 1.3rem;">Kundenservice</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('kontakt')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Kontakt</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('faq')" style="color: white; text-decoration: none; transition: color 0.3s ease;">FAQ</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('anwendung')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Anwendungshinweise</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showLegalModal('garantie')" style="color: white; text-decoration: none; transition: color 0.3s ease;">Garantie</a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" onclick="showMasterLogin()" style="color: #ff6b35; text-decoration: none; transition: color 0.3s ease; font-weight: bold;">🔐 Mitarbeiter Login</a></li>
+                    </ul>
+                </div>
+
+                <!-- Social Media & Newsletter -->
+                <div>
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem; font-size: 1.3rem;">Folgen Sie uns</h3>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <a href="#" style="color: white; font-size: 1.5rem; text-decoration: none;">📘</a>
+                        <a href="#" style="color: white; font-size: 1.5rem; text-decoration: none;">📷</a>
+                        <a href="#" style="color: white; font-size: 1.5rem; text-decoration: none;">🐦</a>
+                        <a href="#" style="color: white; font-size: 1.5rem; text-decoration: none;">📺</a>
+                    </div>
+                    <p style="margin-bottom: 0.5rem; font-size: 0.9rem;">Newsletter abonnieren:</p>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="email" placeholder="Ihre E-Mail" style="flex: 1; padding: 0.5rem; border: none; border-radius: 5px;">
+                        <button style="padding: 0.5rem 1rem; background: #ff6b35; color: white; border: none; border-radius: 5px; cursor: pointer;">📧</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; text-align: center; font-size: 0.9rem; color: rgba(255,255,255,0.8);">
+                <p>&copy; 2025 KlarKRAFT GmbH. Alle Rechte vorbehalten.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="productDetails"></div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Warenkorb</h2>
+            <div id="cartItems"></div>
+            <div class="cart-total" id="cartTotal">Gesamt: €0,00</div>
+            
+            <div id="paymentSection" style="margin-top: 2rem;">
+                <h3 style="color: #5d4037; margin-bottom: 1rem;">Zahlungsmethode:</h3>
+                <div id="savedPaymentMethods" style="margin-bottom: 1rem;"></div>
+                <button class="btn" onclick="togglePaymentOptions()" id="togglePaymentBtn">Andere Zahlungsmethode wählen</button>
+                
+                <div id="paymentMethodSelector" style="display: none; margin-top: 1rem;">
+                    <div class="payment-methods">
+                        <button class="payment-btn" onclick="selectPaymentMethod('paypal')" id="paypalBtn">💳 PayPal</button>
+                        <button class="payment-btn" onclick="selectPaymentMethod('sepa')" id="sepaBtn">🏦 Lastschrift</button>
+                        <button class="payment-btn" onclick="selectPaymentMethod('card')" id="cardBtn">💳 Kreditkarte</button>
+                    </div>
+                    
+                    <!-- Payment Forms -->
+                    <div id="paymentForms"></div>
+                </div>
+                
+                <!-- Order Confirmation Section -->
+                <div id="orderConfirmation" style="display: none; margin-top: 2rem; padding: 1.5rem; background: rgba(255,107,53,0.1); border-radius: 10px; border: 2px solid #ff6b35;">
+                    <h4 style="color: #ff6b35; margin-bottom: 1rem;">🛒 Bestellung bestätigen</h4>
+                    <div id="orderSummary" style="margin-bottom: 1rem;"></div>
+                    <button type="button" class="btn" onclick="completeOrder()" style="background: #4caf50; font-size: 1.1rem; padding: 1rem 2rem;">
+                        ✅ Bestellung jetzt abschließen
+                    </button>
+                    <button type="button" class="btn" onclick="cancelOrder()" style="background: #f44336; margin-top: 0.5rem;">
+                        ❌ Abbrechen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Anmelden</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">Registrieren</button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form active">
+                <h2>Anmelden</h2>
+                <button class="google-btn" onclick="googleAuth()">📧 Mit Google anmelden</button>
+                <div class="divider"><span>oder</span></div>
+                <form id="customerLoginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">E-Mail:</label>
+                        <input type="email" id="loginEmail" name="loginEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Passwort:</label>
+                        <input type="password" id="loginPassword" name="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn">Anmelden</button>
+                    <button type="button" class="btn" onclick="quickLogin()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Login (Max Mustermann)</button>
+                </form>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <h2>Registrieren</h2>
+                <button class="google-btn" onclick="googleAuth()">📧 Mit Google registrieren</button>
+                <div class="divider"><span>oder</span></div>
+                <form id="customerRegisterForm">
+                    <div class="form-group">
+                        <label for="registerName">Name:</label>
+                        <input type="text" id="registerName" name="registerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">E-Mail:</label>
+                        <input type="email" id="registerEmail" name="registerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Passwort:</label>
+                        <input type="password" id="registerPassword" name="registerPassword" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerAddress">Adresse:</label>
+                        <input type="text" id="registerAddress" name="registerAddress" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerCity">Stadt:</label>
+                        <input type="text" id="registerCity" name="registerCity" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerZip">PLZ:</label>
+                        <input type="text" id="registerZip" name="registerZip" required>
+                    </div>
+                    <button type="submit" class="btn">Registrieren</button>
+                    <button type="button" class="btn" onclick="quickRegister()" style="margin-top: 10px; background: #4caf50;">⚡ Test-Registrierung</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Payment Method Modal -->
+    <div id="addPaymentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Neue Zahlungsmethode hinzufügen</h2>
+            
+            <div class="payment-methods">
+                <button class="payment-btn" onclick="selectNewPaymentMethod('paypal')" id="newPaypalBtn">💳 PayPal</button>
+                <button class="payment-btn" onclick="selectNewPaymentMethod('sepa')" id="newSepaBtn">🏦 Lastschrift</button>
+                <button class="payment-btn" onclick="selectNewPaymentMethod('card')" id="newCardBtn">💳 Kreditkarte</button>
+            </div>
+            
+            <div id="newPaymentForms"></div>
+        </div>
+    </div>
+
+    <!-- Legal Modal -->
+    <div id="legalModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="legalContent"></div>
+        </div>
+    </div>
+
+    <!-- Master Login Modal -->
+    <div id="masterLoginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 style="color: #ff6b35; margin-bottom: 2rem;">🔐 KlarKRAFT Mitarbeiter Login</h2>
+            <form id="masterLoginForm" onsubmit="handleMasterLogin(event)">
+                <div class="form-group">
+                    <label for="masterLoginEmail">Mitarbeiter E-Mail:</label>
+                    <input type="email" id="masterLoginEmail" name="masterLoginEmail" required placeholder="mitarbeiter@klarkraft.de">
+                </div>
+                <div class="form-group">
+                    <label for="masterLoginPassword">Passwort:</label>
+                    <input type="password" id="masterLoginPassword" name="masterLoginPassword" required placeholder="Ihr Mitarbeiter-Passwort">
+                </div>
+                <div class="form-group">
+                    <label for="masterLoginCode">Sicherheitscode:</label>
+                    <input type="text" id="masterLoginCode" name="masterLoginCode" required placeholder="KK-XXXX" maxlength="7">
+                </div>
+                <button type="submit" class="btn">🚀 Anmelden</button>
+            </form>
+            
+            <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; font-size: 0.9rem;">
+                <h4 style="color: #ff6b35; margin-bottom: 0.5rem;">Demo-Zugangsdaten:</h4>
+                <div style="display: grid; gap: 0.5rem;">
+                    <button type="button" class="btn" onclick="quickMasterLogin('manager')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        👔 Manager: manager@klarkraft.de / manager123 / KK-2025
+                    </button>
+                    <button type="button" class="btn" onclick="quickMasterLogin('support')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        🎧 Support: support@klarkraft.de / support123 / KK-2025
+                    </button>
+                    <button type="button" class="btn" onclick="quickMasterLogin('admin')" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem;">
+                        ⚙️ Admin: admin@klarkraft.de / admin123 / KK-2025
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Orders Modal (for Masters) -->
+    <div id="newOrdersModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>📦 Neue Bestellungen</h2>
+            <div id="newOrdersList"></div>
+        </div>
+    </div>
+
+    <!-- Master Dashboard Modal -->
+    <div id="masterDashboardModal" class="modal">
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh;">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="masterDashboardContent">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #d7ccc8;">
+                    <div>
+                        <h2 style="color: #ff6b35; margin-bottom: 0.5rem;">🏢 KlarKRAFT Master Dashboard</h2>
+                        <p style="color: #8d6e63;">Mitarbeiter: <span id="currentMasterName" style="font-weight: bold; color: #ff6b35;"></span> (<span id="currentMasterRole" style="color: #8d6e63;"></span>)</p>
+                    </div>
+                    <div style="text-align: right; font-size: 0.9rem; color: #8d6e63;">
+                        <div>Letzter Login: <span id="lastLoginTime"></span></div>
+                        <div>Session: <span id="sessionId" style="font-family: monospace;"></span></div>
+                    </div>
+                </div>
+
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchMasterTab('overview')">📊 Übersicht</button>
+                    <button class="auth-tab" onclick="switchMasterTab('customers')">👥 Kunden</button>
+                    <button class="auth-tab" onclick="switchMasterTab('orders')">📦 Bestellungen</button>
+                    <button class="auth-tab" onclick="switchMasterTab('analytics')">📈 Analytik</button>
+                    <button class="auth-tab" onclick="switchMasterTab('settings')" id="settingsTab">⚙️ Einstellungen</button>
+                </div>
+                
+                <!-- Overview Tab -->
+                <div id="masterOverview" class="auth-form active">
+                    <div id="dashboardStats"></div>
+                </div>
+                
+                <!-- Customers Tab -->
+                <div id="masterCustomers" class="auth-form">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: #ff6b35;">👥 Kundenverwaltung</h3>
+                        <div>
+                            <input type="text" id="customerSearch" placeholder="Kunde suchen..." style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
+                            <button class="btn" onclick="exportCustomersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
+                        </div>
+                    </div>
+                    <div id="masterCustomersList"></div>
+                </div>
+                
+                <!-- Orders Tab -->
+                <div id="masterOrders" class="auth-form">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: #ff6b35;">📦 Bestellverwaltung</h3>
+                        <div>
+                            <select id="orderStatusFilter" style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
+                                <option value="">Alle Status</option>
+                                <option value="pending">In Bearbeitung</option>
+                                <option value="processing">Wird versendet</option>
+                                <option value="completed">Geliefert</option>
+                                <option value="cancelled">Storniert</option>
+                            </select>
+                            <button class="btn" onclick="exportOrdersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
+                        </div>
+                    </div>
+                    <div id="masterOrdersList"></div>
+                </div>
+                
+                <!-- Analytics Tab -->
+                <div id="masterAnalytics" class="auth-form">
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem;">📈 Verkaufsanalytik</h3>
+                    <div id="analyticsContent"></div>
+                </div>
+                
+                <!-- Settings Tab -->
+                <div id="masterSettings" class="auth-form">
+                    <h3 style="color: #ff6b35; margin-bottom: 1rem;">⚙️ System-Einstellungen</h3>
+                    <div id="settingsContent">
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🎮 Demo-Modus</h4>
+                            <div class="setting-item">
+                                <div class="setting-description">
+                                    <div class="setting-title">Automatische Bestellabwicklung</div>
+                                    <div class="setting-subtitle">
+                                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist.
+                                    </div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
+                        </div>
+                        
+                        <!-- Firebase Status -->
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-Synchronisation</h4>
+                            <div id="firebaseStatus" style="padding: 1rem; background: rgba(255,255,255,0.7); border-radius: 8px; margin-bottom: 1rem;">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">Wird überprüft...</span></div>
+                                <div style="font-size: 0.9rem; color: #666;">
+                                    <div>Firebase: <span id="firebaseAvailable">❓</span></div>
+                                    <div>Letzte Sync: <span id="lastSyncTime">Nie</span></div>
+                                </div>
+                                <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem; margin-top: 0.5rem;">🔄 Manuell synchronisieren</button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🧹 Datenbereinigung</h4>
+                            <button class="btn" onclick="clearTestData()" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 1rem;">Test-Daten löschen</button>
+                            <button class="btn" onclick="resetAllData()" style="background: #ff5722; width: auto; padding: 0.5rem 1rem;">Alle Daten zurücksetzen</button>
+                        </div>
+                        <div style="margin-bottom: 2rem;">
+                            <h4 style="color: #8d6e63; margin-bottom: 1rem;">📊 Datenexport</h4>
+                            <button class="btn" onclick="exportAllData()" style="width: auto; padding: 0.5rem 1rem;">Vollständiger Export</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Initialization (CORRECTED) -->
+    <script type="module">
+      // Firebase richtig initialisieren
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyBv2bO-bU3vpnQyz43uUEMKKoobh9nq3_g",
+        authDomain: "klarkraft-shop.firebaseapp.com",
+        projectId: "klarkraft-shop",
+        storageBucket: "klarkraft-shop.firebasestorage.app",
+        messagingSenderId: "78861621602",
+        appId: "1:78861621602:web:79b151e01087b7e32d343b",
+        measurementId: "G-9ZWTSE0FD7"
+      };
+    
+      const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
+      
+      // Firebase global verfügbar machen
+      window.firebaseApp = app;
+      window.firebaseAnalytics = analytics;
+      
+      console.log('🔥 Firebase korrekt initialisiert');
+    </script>
+
+    <!-- Load main JavaScript (OHNE Firebase-Konflikte) -->
+    <script src="scripts/main.js"></script>
+    
+    <!-- Optional: Firebase Integration laden (nach main.js) -->
+    <!-- <script src="scripts/firebase-integration.js"></script> -->
+  
+</body>
+</html>
