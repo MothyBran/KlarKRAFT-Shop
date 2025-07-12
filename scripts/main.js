@@ -1687,15 +1687,725 @@ function changePassword(event) {
     showNotification('✅ Passwort erfolgreich geändert!');
 }
 
-// ========== MASTER DASHBOARD PLACEHOLDER FUNCTIONS ==========
+// ========== MASTER DASHBOARD FUNKTIONEN ==========
+
+// Master Dashboard Funktion
 function showMasterDashboard() {
-    showNotification('🔧 Master Dashboard wird geladen...');
-    logActivity('Dashboard Access', 'Accessed master dashboard');
+    if (!currentMaster) {
+        showMasterLogin();
+        return;
+    }
+    
+    document.getElementById('currentMasterName').textContent = currentMaster.name;
+    document.getElementById('currentMasterRole').textContent = currentMaster.role;
+    document.getElementById('lastLoginTime').textContent = new Date(currentMaster.loginTime).toLocaleString('de-DE');
+    document.getElementById('sessionId').textContent = currentMaster.sessionId;
+    
+    const settingsTab = document.getElementById('settingsTab');
+    if (currentMaster.permissions.includes('all') || currentMaster.role === 'Administrator') {
+        settingsTab.style.display = 'block';
+    } else {
+        settingsTab.style.display = 'none';
+    }
+    
+    loadMasterOverview();
+    document.getElementById('masterDashboardModal').style.display = 'block';
+    
+    setTimeout(() => {
+        updateDemoModeUI();
+    }, 100);
+    
+    logActivity('Dashboard Access', `Accessed master dashboard`);
 }
 
-function showNewOrders() {
-    showNotification('📦 Neue Bestellungen werden geladen...');
+// Master Tab Switching
+function switchMasterTab(tab) {
+    document.querySelectorAll('#masterDashboardContent .auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#masterDashboardContent .auth-form').forEach(f => f.classList.remove('active'));
+    
+    const tabs = document.querySelectorAll('#masterDashboardContent .auth-tab');
+    const forms = document.querySelectorAll('#masterDashboardContent .auth-form');
+    
+    let tabIndex = 0;
+    switch(tab) {
+        case 'overview': tabIndex = 0; loadMasterOverview(); break;
+        case 'customers': tabIndex = 1; loadMasterCustomers(); break;
+        case 'orders': tabIndex = 2; loadMasterOrders(); break;
+        case 'analytics': tabIndex = 3; loadMasterAnalytics(); break;
+        case 'settings': tabIndex = 4; loadMasterSettings(); break;
+    }
+    
+    if (tabs[tabIndex]) tabs[tabIndex].classList.add('active');
+    if (forms[tabIndex]) forms[tabIndex].classList.add('active');
+    
+    logActivity('Tab Switch', `Switched to ${tab} tab`);
 }
+
+// Load Master Overview
+function loadMasterOverview() {
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+    const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+    const todayOrders = orders.filter(order => {
+        const orderDate = new Date(order.orderDate);
+        const today = new Date();
+        return orderDate.toDateString() === today.toDateString();
+    }).length;
+    
+    document.getElementById('dashboardStats').innerHTML = `
+        <div class="master-stat-grid">
+            <div class="master-stat-card">
+                <div class="master-stat-icon">👥</div>
+                <span class="master-stat-number">${users.length}</span>
+                <span class="master-stat-label">Registrierte Kunden</span>
+            </div>
+            <div class="master-stat-card">
+                <div class="master-stat-icon">📦</div>
+                <span class="master-stat-number">${orders.length}</span>
+                <span class="master-stat-label">Gesamtbestellungen</span>
+            </div>
+            <div class="master-stat-card">
+                <div class="master-stat-icon">💰</div>
+                <span class="master-stat-number">€${totalRevenue.toFixed(0)}</span>
+                <span class="master-stat-label">Gesamtumsatz</span>
+            </div>
+            <div class="master-stat-card">
+                <div class="master-stat-icon">📈</div>
+                <span class="master-stat-number">€${avgOrderValue.toFixed(0)}</span>
+                <span class="master-stat-label">Ø Bestellwert</span>
+            </div>
+            <div class="master-stat-card">
+                <div class="master-stat-icon">🆕</div>
+                <span class="master-stat-number">${todayOrders}</span>
+                <span class="master-stat-label">Heute bestellt</span>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+            <div>
+                <h3 style="color: #ff6b35; margin-bottom: 1rem;">📈 Neueste Bestellungen</h3>
+                <div id="recentOrders"></div>
+            </div>
+            <div>
+                <h3 style="color: #ff6b35; margin-bottom: 1rem;">👤 Neue Kunden</h3>
+                <div id="recentCustomers"></div>
+            </div>
+        </div>
+    `;
+    
+    const recentOrders = orders
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+        .slice(0, 5);
+        
+    document.getElementById('recentOrders').innerHTML = recentOrders.length > 0 ? recentOrders.map(order => `
+        <div class="order-item" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>#${order.orderId}</strong><br>
+                    <small>${order.customerName}</small>
+                </div>
+                <div style="text-align: right;">
+                    <span class="order-status status-${order.status}">${getStatusText(order.status)}</span><br>
+                    <strong>€${order.total.toFixed(2)}</strong>
+                </div>
+            </div>
+        </div>
+    `).join('') : '<p>Keine Bestellungen vorhanden.</p>';
+    
+    const recentCustomers = users
+        .sort((a, b) => new Date(b.registrationDate) - new Date(a.registrationDate))
+        .slice(0, 5);
+        
+    document.getElementById('recentCustomers').innerHTML = recentCustomers.length > 0 ? recentCustomers.map(user => `
+        <div class="customer-item" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${user.name}</strong><br>
+                    <small>${user.email}</small>
+                </div>
+                <div style="text-align: right;">
+                    <div>${user.totalOrders || 0} Bestellungen</div>
+                    <small>€${(user.totalSpent || 0).toFixed(2)}</small>
+                </div>
+            </div>
+        </div>
+    `).join('') : '<p>Keine Kunden registriert.</p>';
+}
+
+// Load Master Customers
+function loadMasterCustomers() {
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const searchInput = document.getElementById('customerSearch');
+    
+    function renderCustomers(customerList = users) {
+        document.getElementById('masterCustomersList').innerHTML = `
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>Kunde</th>
+                        <th>Kontakt</th>
+                        <th>Adresse</th>
+                        <th>Bestellungen</th>
+                        <th>Umsatz</th>
+                        <th>Registriert</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${customerList.map(user => `
+                        <tr>
+                            <td>
+                                <strong>${user.name}</strong><br>
+                                <small>ID: ${user.customerId}</small>
+                            </td>
+                            <td>
+                                ${user.email}<br>
+                                <small>${user.phone || 'Kein Telefon'}</small>
+                            </td>
+                            <td>
+                                ${user.address || 'Keine Adresse'}<br>
+                                <small>${user.city || ''} ${user.zip || ''}</small>
+                            </td>
+                            <td><strong>${user.totalOrders || 0}</strong></td>
+                            <td><strong>€${(user.totalSpent || 0).toFixed(2)}</strong></td>
+                            <td>${new Date(user.registrationDate || Date.now()).toLocaleDateString('de-DE')}</td>
+                            <td>
+                                <button class="action-btn view" onclick="sendEmailToCustomer('${user.customerId}')" title="E-Mail senden">📧</button>
+                                <button class="action-btn delete" onclick="deleteCustomerAccount('${user.customerId}')" title="Konto löschen">🗑️</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    renderCustomers();
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredUsers = users.filter(user => 
+                user.name.toLowerCase().includes(searchTerm) ||
+                user.email.toLowerCase().includes(searchTerm) ||
+                (user.customerId && user.customerId.toLowerCase().includes(searchTerm))
+            );
+            renderCustomers(filteredUsers);
+        });
+    }
+}
+
+// Load Master Orders
+function loadMasterOrders() {
+    const statusFilter = document.getElementById('orderStatusFilter');
+    
+    function renderOrders(orderList = orders) {
+        document.getElementById('masterOrdersList').innerHTML = `
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>Bestellung</th>
+                        <th>Kunde</th>
+                        <th>Artikel</th>
+                        <th>Gesamt</th>
+                        <th>Zahlung</th>
+                        <th>Status</th>
+                        <th>Datum</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orderList
+                        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                        .map(order => {
+                            const hasCancellationRequest = hasActiveCancellationRequest(order);
+                            const canPerformActions = canPerformOrderActions(order);
+                            
+                            return `
+                            <tr>
+                                <td>
+                                    <strong>#${order.orderId}</strong><br>
+                                    <small>📦 ${order.trackingNumber}</small>
+                                    ${hasCancellationRequest ? `
+                                        <br><span class="cancellation-indicator">⚠️ STORNIERUNG ANGEFRAGT</span>
+                                    ` : ''}
+                                </td>
+                                <td>
+                                    <strong>${order.customerName}</strong><br>
+                                    <small>${order.customerEmail}</small>
+                                </td>
+                                <td>${order.items.length} Artikel</td>
+                                <td>
+                                    <div><strong>€${order.total.toFixed(2)}</strong></div>
+                                    ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+                                </td>
+                                <td>${order.paymentMethod}</td>
+                                <td>
+                                    <select class="status-select ${!canPerformActions ? 'select-disabled' : ''}" 
+                                            onchange="${!canPerformActions ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" 
+                                            value="${order.status}" 
+                                            ${!canPerformActions ? 'style="background: #f0f0f0; cursor: not-allowed;" disabled' : ''}>
+                                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
+                                        <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung</option>
+                                        <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet</option>
+                                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Abgeschlossen</option>
+                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
+                                    </select>
+                                    ${hasCancellationRequest ? `
+                                        <br><small style="color: #ff9800; font-weight: bold;">Stornierung angefragt!</small>
+                                    ` : ''}
+                                </td>
+                                <td>${new Date(order.orderDate).toLocaleDateString('de-DE')}</td>
+                                <td>
+                                    <button class="action-btn view" onclick="viewOrderDetailsInModal('${order.orderId}')" title="Details anzeigen">👁️</button>
+                                    ${order.status !== 'cancelled' && order.status !== 'completed' ? 
+                                        `<button class="action-btn delete ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" 
+                                                title="${!canPerformActions ? 'Stornierungsanfrage aktiv' : 'Bestellung stornieren'}" 
+                                                style="cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'}; opacity: ${!canPerformActions ? '0.5' : '1'};">❌</button>` : 
+                                        ''}
+                                </td>
+                            </tr>
+                        `;
+                        }).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    renderOrders();
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', (e) => {
+            const selectedStatus = e.target.value;
+            const filteredOrders = selectedStatus ? 
+                orders.filter(order => order.status === selectedStatus) : 
+                orders;
+            renderOrders(filteredOrders);
+        });
+    }
+}
+
+// Load Master Analytics
+function loadMasterAnalytics() {
+    document.getElementById('analyticsContent').innerHTML = `
+        <div class="chart-container">
+            <h4>📊 Verkaufsübersicht</h4>
+            <p>Analytik-Dashboard in Entwicklung...</p>
+            <p>Hier werden später detaillierte Verkaufszahlen und Trends angezeigt.</p>
+        </div>
+    `;
+}
+
+// Load Master Settings
+function loadMasterSettings() {
+    document.getElementById('settingsContent').innerHTML = `
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🎮 Demo-Modus</h4>
+            <div class="setting-item">
+                <div class="setting-description">
+                    <div class="setting-title">Automatische Bestellabwicklung</div>
+                    <div class="setting-subtitle">
+                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist. Bei "Aus" werden niemals automatische Updates durchgeführt.
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="demoModeToggle" onchange="toggleDemoMode()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
+        </div>
+        
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-Synchronisation</h4>
+            <div id="firebaseStatus" style="padding: 1rem; background: rgba(255,255,255,0.7); border-radius: 8px; margin-bottom: 1rem;">
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">❌ Nicht verfügbar</span></div>
+                <div style="font-size: 0.9rem; color: #666;">
+                    <div>Firebase: <span id="firebaseAvailable">❌</span></div>
+                    <div>Letzte Sync: <span id="lastSyncTime">Nie</span></div>
+                </div>
+                <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem; margin-top: 0.5rem;">🔄 Manuell synchronisieren</button>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">🧹 Datenbereinigung</h4>
+            <button class="btn" onclick="clearTestData()" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 1rem;">Test-Daten löschen</button>
+            <button class="btn" onclick="resetAllData()" style="background: #ff5722; width: auto; padding: 0.5rem 1rem;">Alle Daten zurücksetzen</button>
+        </div>
+        <div style="margin-bottom: 2rem;">
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">📊 Datenexport</h4>
+            <button class="btn" onclick="exportAllData()" style="width: auto; padding: 0.5rem 1rem;">Vollständiger Export</button>
+        </div>
+        <div>
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">👥 Mitarbeiter-Logs</h4>
+            <div id="activityLogs">${generateActivityLogs()}</div>
+        </div>
+    `;
+    updateDemoModeUI();
+}
+
+// Generate Activity Logs
+function generateActivityLogs() {
+    const recentLogs = activityLogs.slice(0, 10);
+    return recentLogs.length > 0 ? recentLogs.map(log => `
+        <div style="padding: 0.5rem; margin-bottom: 0.5rem; background: rgba(255,255,255,0.7); border-radius: 5px; border-left: 3px solid #ff6b35;">
+            <div style="font-size: 0.9rem;"><strong>${log.user}</strong> (${log.role}) - ${log.action}</div>
+            <div style="font-size: 0.8rem; color: #8d6e63;">${new Date(log.timestamp).toLocaleString('de-DE')}</div>
+            <div style="font-size: 0.8rem; color: #8d6e63;">${log.details}</div>
+        </div>
+    `).join('') : '<p>Keine Aktivitäten gefunden.</p>';
+}
+
+// Ersetze die showNewOrders Funktion
+function showNewOrders() {
+    if (!currentMaster) {
+        showNotification('⚠️ Nur Mitarbeiter können neue Bestellungen einsehen.');
+        return;
+    }
+
+    const pendingOrders = orders.filter(order => order.status === 'pending')
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+    const processing1Orders = orders.filter(order => order.status === 'processing1')
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+    const processing2Orders = orders.filter(order => order.status === 'processing2')
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+
+    const ordersList = document.getElementById('newOrdersList');
+    
+    if (pendingOrders.length === 0 && processing1Orders.length === 0 && processing2Orders.length === 0) {
+        ordersList.innerHTML = `
+            <div class="empty-cart">
+                <p>🎉 Keine offenen Bestellungen!</p>
+                <p>Alle Bestellungen sind bearbeitet oder abgeschlossen.</p>
+            </div>
+        `;
+    } else {
+        let contentHtml = `
+            <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+                <h3 style="color: #ff6b35; margin-bottom: 0.5rem;">📊 Übersicht</h3>
+                <p><strong>${pendingOrders.length}</strong> neue Bestellung(en) warten auf Bearbeitung</p>
+                <p><strong>${processing1Orders.length}</strong> Bestellung(en) sind in Bearbeitung</p>
+                <p><strong>${processing2Orders.length}</strong> Bestellung(en) werden versendet</p>
+                <p>Gesamtwert offener Bestellungen: <strong>€${[...pendingOrders, ...processing1Orders, ...processing2Orders].reduce((sum, order) => sum + order.total, 0).toFixed(2)}</strong></p>
+            </div>
+        `;
+
+        if (pendingOrders.length > 0) {
+            contentHtml += `<h3 style="color: #f44336; margin: 2rem 0 1rem 0;">🆕 Neue Bestellungen (${pendingOrders.length})</h3>`;
+            contentHtml += pendingOrders.map(order => createOrderCard(order, 'new')).join('');
+        }
+
+        if (processing1Orders.length > 0) {
+            contentHtml += `<h3 style="color: #ff9800; margin: 2rem 0 1rem 0;">⚙️ In Bearbeitung (${processing1Orders.length})</h3>`;
+            contentHtml += processing1Orders.map(order => createOrderCard(order, 'processing1')).join('');
+        }
+
+        if (processing2Orders.length > 0) {
+            contentHtml += `<h3 style="color: #2196f3; margin: 2rem 0 1rem 0;">📦 Wird versendet (${processing2Orders.length})</h3>`;
+            contentHtml += processing2Orders.map(order => createOrderCard(order, 'processing2')).join('');
+        }
+
+        ordersList.innerHTML = contentHtml;
+    }
+    
+    document.getElementById('newOrdersModal').style.display = 'block';
+    logActivity('View Orders', `Viewed ${pendingOrders.length} pending, ${processing1Orders.length} processing1 and ${processing2Orders.length} processing2 orders`);
+}
+
+// Create Order Card
+function createOrderCard(order, type) {
+    const borderColor = type === 'new' ? '#f44336' : (type === 'processing1' ? '#ff9800' : '#2196f3');
+    const statusLabel = type === 'new' ? 'NEU' : (type === 'processing1' ? 'IN ARBEIT' : 'VERSAND');
+    const statusBg = type === 'new' ? '#f44336' : (type === 'processing1' ? '#ff9800' : '#2196f3');
+    const hasCancellationRequest = hasActiveCancellationRequest(order);
+    const canPerformActions = canPerformOrderActions(order);
+
+    return `
+        <div class="cart-item" style="border-left: 4px solid ${borderColor};">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <strong>Bestellung #${order.orderId}</strong>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <span style="background: ${statusBg}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">${statusLabel}</span>
+                        ${hasCancellationRequest ? `
+                            <span style="background: #ff9800; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; animation: pulse 2s infinite;">
+                                ⚠️ STORNIERUNG ANGEFRAGT!
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                ${hasCancellationRequest ? `
+                    <div style="margin-bottom: 0.5rem; padding: 0.8rem; background: rgba(255,152,0,0.1); border-radius: 8px; border-left: 3px solid #ff9800;">
+                        <strong style="color: #ff9800;">📨 Kunden-Stornierungsanfrage:</strong><br>
+                        <small style="color: #8d6e63;">
+                            Angefragt am: ${new Date(order.customerCancellationRequest.requestedAt).toLocaleString('de-DE')}<br>
+                            Grund: ${order.customerCancellationRequest.reason}
+                        </small>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Kunde:</strong> ${order.customerName} (${order.customerEmail})<br>
+                    <strong>Bestellt am:</strong> ${new Date(order.orderDate).toLocaleString('de-DE')}<br>
+                    <strong>Artikel:</strong> ${order.items.length} Produkt(e)
+                    ${order.processedBy ? `<br><strong>Bearbeiter:</strong> ${order.processedBy}` : ''}
+                </div>
+                
+                <div style="font-size: 0.9rem; color: #8d6e63; margin-bottom: 0.5rem;">
+                    ${order.items.map(item => `${item.name} (${item.quantity}x €${item.price.toFixed(2)})`).join(', ')}
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>Lieferadresse:</strong><br>
+                    ${order.shippingAddress.address}<br>
+                    ${order.shippingAddress.zip} ${order.shippingAddress.city}, ${order.shippingAddress.country}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Zahlungsmethode:</strong> ${order.paymentMethod}<br>
+                        <strong>Tracking:</strong> ${order.trackingNumber}
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.2rem; font-weight: bold; color: #ff6b35;">€${order.total.toFixed(2)}</div>
+                        ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${type === 'new' ? `
+                    <button class="btn" onclick="processOrder('${order.orderId}')" style="background: #4caf50; width: auto; padding: 0.5rem 1rem;">
+                        ✅ Übernehmen
+                    </button>
+                ` : type === 'processing1' ? `
+                    <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                            onclick="${!canPerformActions ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}')`}" 
+                            style="background: ${!canPerformActions ? '#ccc' : '#2196f3'}; width: auto; padding: 0.5rem 1rem; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};">
+                        📦 Zum Versand
+                    </button>
+                ` : `
+                    <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                            onclick="${!canPerformActions ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}')`}" 
+                            style="background: ${!canPerformActions ? '#ccc' : '#4caf50'}; width: auto; padding: 0.5rem 1rem; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};">
+                        🚚 Versandbereit
+                    </button>
+                `}
+                <button class="btn" onclick="viewOrderDetailsInModal('${order.orderId}')" style="background: #2196f3; width: auto; padding: 0.5rem 1rem;">
+                    👁️ Details
+                </button>
+                <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                        onclick="${!canPerformActions ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" 
+                        style="background: ${!canPerformActions ? '#ccc' : '#f44336'}; width: auto; padding: 0.5rem 1rem; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};">
+                    ❌ Stornieren
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Helper Functions für Order Actions
+function showCancellationRequestError() {
+    showNotification('⚠️ Diese Bestellung hat eine aktive Stornierungsanfrage vom Kunden. Bitte genehmigen oder lehnen Sie diese zuerst in der Detail-Ansicht ab, bevor Sie andere Aktionen durchführen können.');
+}
+
+function processOrder(orderId) {
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const order = orders[orderIndex];
+
+    if (order.status === 'cancelled') {
+        showNotification('⚠️ Stornierte Bestellungen können nicht bearbeitet werden.');
+        return;
+    }
+
+    if (order.status === 'completed') {
+        showNotification('⚠️ Diese Bestellung ist bereits abgeschlossen.');
+        return;
+    }
+
+    orders[orderIndex].processedBy = currentMaster.name;
+    orders[orderIndex].processedAt = new Date().toISOString();
+    orders[orderIndex].status = 'processing1';
+    orders[orderIndex].assignedTo = currentMaster.name;
+    orders[orderIndex].assignedRole = currentMaster.role;
+    
+    addTimelineEvent(orders[orderIndex], 'processing1', 'processing_started', 'Bearbeitung übernommen', '⚙️', currentMaster.name, 'master');
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    
+    logActivity('Process Order', `Order ${orderId} assigned to and processed by ${currentMaster.name}`);
+    showNotification(`✅ Bestellung #${orderId} wurde Ihnen zugewiesen und ist jetzt in Bearbeitung.`);
+    
+    updateOrdersCounter();
+    showNewOrders();
+}
+
+function advanceToShipping(orderId) {
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const order = orders[orderIndex];
+    
+    if (!canPerformOrderActions(order)) {
+        showCancellationRequestError();
+        return;
+    }
+
+    if (confirm(`📦 Bestellung #${orderId} zum Versand weiterleiten?`)) {
+        orders[orderIndex].status = 'processing2';
+        orders[orderIndex].statusUpdatedBy = currentMaster.name;
+        orders[orderIndex].statusUpdatedAt = new Date().toISOString();
+        orders[orderIndex].shippingStartedAt = new Date().toISOString();
+        
+        addTimelineEvent(orders[orderIndex], 'processing2', 'shipping_prepared', 'Versandvorbereitung gestartet', '📦', currentMaster.name, 'master');
+        
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        
+        logActivity('Advance to Shipping', `Order ${orderId} advanced to shipping by ${currentMaster.name}`);
+        showNotification(`📦 Bestellung #${orderId} wurde zum Versand weitergeleitet!`);
+        
+        updateOrdersCounter();
+        if (document.getElementById('newOrdersModal').style.display === 'block') {
+            showNewOrders();
+        }
+    }
+}
+
+function markAsCompleted(orderId) {
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex === -1) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const order = orders[orderIndex];
+    
+    if (!canPerformOrderActions(order)) {
+        showCancellationRequestError();
+        return;
+    }
+
+    if (confirm(`📦 Bestellung #${orderId} als "versendet/abgeschlossen" markieren?`)) {
+        orders[orderIndex].status = 'completed';
+        orders[orderIndex].statusUpdatedBy = currentMaster.name;
+        orders[orderIndex].statusUpdatedAt = new Date().toISOString();
+        orders[orderIndex].completedAt = new Date().toISOString();
+        
+        addTimelineEvent(orders[orderIndex], 'completed', 'order_shipped', 'Bestellung versendet', '🚚', currentMaster.name, 'master');
+        
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        
+        logActivity('Order Completed', `Order ${orderId} marked as completed by ${currentMaster.name}`);
+        showNotification(`✅ Bestellung #${orderId} als abgeschlossen markiert!`);
+        
+        updateOrdersCounter();
+        if (document.getElementById('newOrdersModal').style.display === 'block') {
+            showNewOrders();
+        }
+    }
+}
+
+// Update Order Status
+function updateOrderStatus(orderId, newStatus) {
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    if (orderIndex !== -1) {
+        const order = orders[orderIndex];
+        
+        // Prüfen ob Aktionen erlaubt sind
+        if (!canPerformOrderActions(order)) {
+            showCancellationRequestError();
+            return;
+        }
+        
+        const oldStatus = order.status;
+        order.status = newStatus;
+        order.statusUpdatedBy = currentMaster.name;
+        order.statusUpdatedAt = new Date().toISOString();
+        
+        // Timeline Event hinzufügen
+        const statusDescriptions = {
+            'pending': 'Auf Bearbeitung wartend',
+            'processing1': 'In Bearbeitung',
+            'processing2': 'Versandvorbereitung',
+            'completed': 'Versand abgeschlossen',
+            'cancelled': 'Storniert'
+        };
+        
+        const statusIcons = {
+            'pending': '⏳',
+            'processing1': '⚙️',
+            'processing2': '📦',
+            'completed': '🚚',
+            'cancelled': '❌'
+        };
+        
+        addTimelineEvent(order, newStatus, 'status_updated', statusDescriptions[newStatus], statusIcons[newStatus], currentMaster.name, 'master');
+        
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        
+        logActivity('Order Status Update', `Order ${orderId} status changed from ${oldStatus} to ${newStatus}`);
+        showNotification(`✅ Bestellung #${orderId} Status aktualisiert: ${getStatusText(newStatus)}`);
+        
+        loadMasterOrders();
+    }
+}
+
+// Placeholder functions for missing actions
+function sendEmailToCustomer(customerId) {
+    showNotification('📧 E-Mail-Funktion wird in Kürze verfügbar sein.');
+}
+
+function deleteCustomerAccount(customerId) {
+    if (confirm('⚠️ Kundenkonto wirklich löschen?')) {
+        showNotification('🗑️ Konto-Löschung wird in Kürze verfügbar sein.');
+    }
+}
+
+function exportCustomersCSV() {
+    showNotification('📥 CSV-Export wird in Kürze verfügbar sein.');
+}
+
+function exportOrdersCSV() {
+    showNotification('📥 CSV-Export wird in Kürze verfügbar sein.');
+}
+
+function viewOrderDetailsInModal(orderId) {
+    showNotification('👁️ Detail-Ansicht wird geladen...');
+}
+
+function cancelOrderFromModal(orderId) {
+    showNotification('❌ Stornierung wird in Kürze verfügbar sein.');
+}
+
+function exportAllData() {
+    showNotification('📊 Datenexport wird in Kürze verfügbar sein.');
+}
+
+function clearTestData() {
+    if (confirm('🗑️ Wirklich alle Test-Daten löschen?')) {
+        showNotification('🗑️ Test-Daten löschen wird in Kürze verfügbar sein.');
+    }
+}
+
+function resetAllData() {
+    if (confirm('⚠️ ACHTUNG: Wirklich ALLE Daten zurücksetzen?')) {
+        showNotification('🔄 Daten-Reset wird in Kürze verfügbar sein.');
+    }
+}
+
+function manualSync() {
+    showNotification('🔄 Manuelle Synchronisation derzeit nicht verfügbar.');
+}
+
+console.log('✅ Master Dashboard Funktionen geladen!');
 
 // ========== LEGAL FUNCTIONS ==========
 function showLegalModal(type) {
