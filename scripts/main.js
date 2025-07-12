@@ -2342,7 +2342,7 @@ function loadMasterSettings() {
                         <span style="font-size: 0.9rem; font-weight: bold; color: #ff6b35;">☁️ Cloud-Sync:</span>
                         <label class="toggle-switch" style="width: 50px; height: 28px;">
                             <input type="checkbox" id="cloudSyncToggle" onchange="toggleCloudSync()" checked>
-                            <span class="toggle-slider" style="border-radius: 5px;"></span>
+                            <span class="toggle-slider" style="border-radius: 28px;"></span>
                         </label>
                     </div>
                 </div>
