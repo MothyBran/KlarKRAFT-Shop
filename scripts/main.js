@@ -960,6 +960,288 @@ function getTimelineStatusClass(eventStatus, orderStatus, isLast) {
     return 'completed';
 }
 
+// ========== BESTELLUNG DETAILANSICHT FUNKTION ==========
+function viewOrderDetailsInModal(orderId) {
+    const order = orders.find(o => o.orderId === orderId);
+    if (!order) {
+        showNotification('❌ Bestellung nicht gefunden.');
+        return;
+    }
+
+    const subtotal = order.subtotal || (order.total - (order.shippingCost || 0));
+    const hasCancellationRequest = hasActiveCancellationRequest(order);
+    const canPerformActions = canPerformOrderActions(order);
+    
+    const detailsHtml = `
+        <div id="orderDetailsModal" class="modal" style="display: block;">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+                <span class="close" onclick="closeOrderDetails()">&times;</span>
+                <h2 style="color: #ff6b35; margin-bottom: 2rem;">📦 Bestelldetails #${order.orderId}</h2>
+                
+                ${hasCancellationRequest ? `
+                    <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,152,0,0.1); border-radius: 10px; border-left: 5px solid #ff9800;">
+                        <h3 style="color: #ff9800; margin-bottom: 0.5rem;">⚠️ AKTIVE STORNIERUNGSANFRAGE</h3>
+                        <p style="color: #8d6e63; margin-bottom: 0.5rem;">
+                            Diese Bestellung hat eine aktive Stornierungsanfrage vom Kunden. 
+                            Bitte bearbeiten Sie diese zuerst, bevor Sie andere Aktionen durchführen.
+                        </p>
+                        <p style="color: #8d6e63; font-size: 0.9rem;">
+                            <strong>Angefragt von:</strong> ${order.customerCancellationRequest.requestedBy}<br>
+                            <strong>Grund:</strong> ${order.customerCancellationRequest.reason}<br>
+                            <strong>Datum:</strong> ${new Date(order.customerCancellationRequest.requestedAt).toLocaleString('de-DE')}
+                        </p>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn" onclick="approveCancellation('${order.orderId}')" style="background: #f44336; width: auto; padding: 0.5rem 1rem; margin-right: 0.5rem;">
+                                ✅ Stornierung genehmigen
+                            </button>
+                            <button class="btn" onclick="denyCancellation('${order.orderId}')" style="background: #4caf50; width: auto; padding: 0.5rem 1rem;">
+                                ❌ Ablehnen
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="color: #8d6e63; margin-bottom: 1rem;">📋 Bestellverlauf</h3>
+                    ${generateOrderTimeline(order)}
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">👤 Kunde</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <p><strong>Name:</strong> ${order.customerName}</p>
+                            <p><strong>E-Mail:</strong> ${order.customerEmail}</p>
+                            <p><strong>Telefon:</strong> ${order.customerPhone || 'Nicht angegeben'}</p>
+                            <p><strong>Kunden-ID:</strong> ${order.customerId}</p>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">📋 Bestellung</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <p><strong>Bestell-ID:</strong> ${order.orderId}</p>
+                            <p><strong>Datum:</strong> ${new Date(order.orderDate).toLocaleString('de-DE')}</p>
+                            <p><strong>Status:</strong> <span class="order-status status-${order.status}">${getStatusText(order.status)}</span></p>
+                            <p><strong>Tracking:</strong> ${order.trackingNumber}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section" style="margin-bottom: 2rem;">
+                    <h3 style="color: #8d6e63; margin-bottom: 1rem;">🛍️ Bestellte Artikel</h3>
+                    <div style="background: rgba(255,255,255,0.7); border-radius: 8px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: #8d6e63; color: white;">
+                                <tr>
+                                    <th style="padding: 0.8rem; text-align: left;">Artikel</th>
+                                    <th style="padding: 0.8rem; text-align: center;">Menge</th>
+                                    <th style="padding: 0.8rem; text-align: right;">Einzelpreis</th>
+                                    <th style="padding: 0.8rem; text-align: right;">Gesamt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${order.items.map(item => `
+                                    <tr style="border-bottom: 1px solid #e0e0e0;">
+                                        <td style="padding: 0.8rem;">${item.name}</td>
+                                        <td style="padding: 0.8rem; text-align: center;">${item.quantity}x</td>
+                                        <td style="padding: 0.8rem; text-align: right;">€${item.price.toFixed(2)}</td>
+                                        <td style="padding: 0.8rem; text-align: right; font-weight: bold;">€${item.total.toFixed(2)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">🏠 Lieferadresse</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <p>${order.customerName}</p>
+                            <p>${order.shippingAddress.address}</p>
+                            <p>${order.shippingAddress.zip} ${order.shippingAddress.city}</p>
+                            <p>${order.shippingAddress.country}</p>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <h3 style="color: #8d6e63; margin-bottom: 1rem;">💰 Kosten</h3>
+                        <div style="background: rgba(255,255,255,0.7); padding: 1rem; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Zwischensumme:</span>
+                                <span>€${subtotal.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Versandkosten:</span>
+                                <span>${order.shippingCost > 0 ? '€' + order.shippingCost.toFixed(2) : 'KOSTENLOS'}</span>
+                            </div>
+                            <hr style="margin: 0.5rem 0;">
+                            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; color: #ff6b35;">
+                                <span>Gesamtsumme:</span>
+                                <span>€${order.total.toFixed(2)}</span>
+                            </div>
+                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e0e0e0; font-size: 0.9rem; color: #8d6e63;">
+                                <strong>Zahlungsmethode:</strong> ${order.paymentMethod}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+                    ${order.status === 'pending' ? `
+                        <button class="btn" onclick="processOrder('${order.orderId}'); closeOrderDetails();" style="background: #4caf50;">
+                            ✅ Bearbeitung übernehmen
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status !== 'cancelled' && order.status !== 'completed' ? `
+                        <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `closeOrderDetails(); cancelOrderFromModal('${order.orderId}');`}" 
+                                style="background: ${!canPerformActions ? '#ccc' : '#f44336'}; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};"
+                                ${!canPerformActions ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                            ❌ Stornieren
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status === 'processing1' ? `
+                        <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `advanceToShipping('${order.orderId}'); closeOrderDetails();`}" 
+                                style="background: ${!canPerformActions ? '#ccc' : '#2196f3'}; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};"
+                                ${!canPerformActions ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                            📦 Zum Versand
+                        </button>
+                    ` : ''}
+                    
+                    ${order.status === 'processing2' ? `
+                        <button class="btn ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `markAsCompleted('${order.orderId}'); closeOrderDetails();`}" 
+                                style="background: ${!canPerformActions ? '#ccc' : '#4caf50'}; cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'};"
+                                ${!canPerformActions ? 'title="Stornierungsanfrage muss zuerst bearbeitet werden"' : ''}>
+                            🚚 Als versendet markieren
+                        </button>
+                    ` : ''}
+                    
+                    <button class="btn" onclick="closeOrderDetails()" style="background: #9e9e9e;">
+                        Schließen
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', detailsHtml);
+    logActivity('View Order Details', `Viewed details for order ${order.orderId}`);
+}
+
+// Hilfs-Funktionen die für viewOrderDetailsInModal benötigt werden:
+
+function hasActiveCancellationRequest(order) {
+    return order.customerCancellationRequest && 
+           !order.customerCancellationApproved && 
+           !order.customerCancellationDenied &&
+           order.status !== 'cancelled';
+}
+
+function canPerformOrderActions(order) {
+    // Wenn es eine aktive Stornierungsanfrage gibt, können keine weiteren Aktionen durchgeführt werden
+    // außer der Genehmigung/Ablehnung der Stornierung
+    return !hasActiveCancellationRequest(order);
+}
+
+function closeOrderDetails() {
+    const modal = document.getElementById('orderDetailsModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function getStatusText(status) {
+    const statusTexts = {
+        'pending': 'Ausstehend',
+        'processing1': 'In Bearbeitung...',
+        'processing2': 'Wird versendet...',
+        'completed': 'Abgeschlossen',
+        'cancelled': 'Storniert!'
+    };
+    return statusTexts[status] || status;
+}
+
+function generateOrderTimeline(order) {
+    if (!order.timeline || order.timeline.length === 0) {
+        return `
+            <div class="customer-timeline">
+                <div class="customer-timeline-item pending">
+                    <div class="timeline-icon">📦</div>
+                    <div class="timeline-content">
+                        <strong>Bestellung eingegangen</strong>
+                        <div class="timeline-date">${new Date(order.orderDate).toLocaleString('de-DE')}</div>
+                        <div class="timeline-detail">Bestellung wurde erfolgreich aufgegeben</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="customer-timeline">
+            ${order.timeline.map((event, index) => {
+                const statusClass = getTimelineStatusClass(event.status, order.status, index === order.timeline.length - 1);
+                return `
+                    <div class="customer-timeline-item ${statusClass}">
+                        <div class="timeline-icon">${event.icon}</div>
+                        <div class="timeline-content">
+                            <strong>${event.description}</strong>
+                            <div class="timeline-date">${new Date(event.timestamp).toLocaleString('de-DE')}</div>
+                            <div class="timeline-detail">
+                                ${event.actorType === 'system' ? 'Automatisch' : 
+                                  event.actorType === 'master' ? `Bearbeitet von: ${event.actor}` : 
+                                  `von ${event.actor}`}
+                            </div>
+                            ${event.cancellationReason ? `
+                                <div class="timeline-detail" style="color: #f44336; font-weight: bold;">
+                                    Grund: ${getReasonText(event.cancellationReason)}
+                                </div>
+                            ` : ''}
+                            ${event.note ? `
+                                <div class="timeline-detail" style="font-style: italic;">
+                                    Notiz: ${event.note}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function getTimelineStatusClass(eventStatus, orderStatus, isLast) {
+    if (eventStatus === 'cancelled') return 'cancelled';
+    if (eventStatus === 'completed') return 'completed';
+    if (isLast && (orderStatus === 'pending' || orderStatus === 'processing1' || orderStatus === 'processing2')) {
+        return 'pending';
+    }
+    return 'completed';
+}
+
+function getReasonText(reason) {
+    const reasonMap = {
+        'customer_request': 'Kundenwunsch',
+        'payment_failed': 'Zahlungsprobleme',
+        'out_of_stock': 'Artikel nicht verfügbar',
+        'quality_issues': 'Qualitätsprobleme',
+        'shipping_issues': 'Versandprobleme',
+        'system_error': 'Systemfehler',
+        'other': 'Sonstige Gründe'
+    };
+    return reasonMap[reason] || reason;
+}
+
+function showCancellationRequestError() {
+    showNotification('⚠️ Diese Bestellung hat eine aktive Stornierungsanfrage vom Kunden. Bitte genehmigen oder lehnen Sie diese zuerst in der Detail-Ansicht ab, bevor Sie andere Aktionen durchführen können.');
+}
+
 // ========== STORNIERUNGSFUNKTIONEN ==========
 function hasActiveCancellationRequest(order) {
     return order.customerCancellationRequest && 
@@ -2377,7 +2659,7 @@ function exportOrdersCSV() {
     showNotification('📥 CSV-Export wird in Kürze verfügbar sein.');
 }
 
-function viewOrderDetailsInModal(orderId) {
+// function viewOrderDetailsInModal(orderId) {
     showNotification('👁️ Detail-Ansicht wird geladen...');
 }
 
