@@ -2311,7 +2311,7 @@ function loadMasterSettings() {
                 <div class="setting-description">
                     <div class="setting-title">Automatische Bestellabwicklung</div>
                     <div class="setting-subtitle">
-                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist. Bei "Aus" werden niemals automatische Updates durchgeführt.
+                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist.
                     </div>
                 </div>
                 <label class="toggle-switch">
@@ -2322,17 +2322,39 @@ function loadMasterSettings() {
             <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
         </div>
         
+        <!-- Firebase Status -->
         <div style="margin-bottom: 2rem;">
-            <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-
-
-Synchronisation</h4>
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-Synchronisation</h4>
             <div id="firebaseStatus" style="padding: 1rem; background: rgba(255,255,255,0.7); border-radius: 8px; margin-bottom: 1rem;">
-                <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">❌ Nicht verfügbar</span></div>
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">Wird überprüft...</span></div>
                 <div style="font-size: 0.9rem; color: #666;">
-                    <div>Firebase: <span id="firebaseAvailable">❌</span></div>
+                    <div>Firebase: <span id="firebaseAvailable">❓</span></div>
                     <div>Letzte Sync: <span id="lastSyncTime">Nie</span></div>
                 </div>
-                <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem; margin-top: 0.5rem;">🔄 Manuell synchronisieren</button>
+                
+                <!-- Buttons mit Toggle -->
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem;" id="manualSyncBtn">🔄 Manuell synchronisieren</button>
+                    <button class="btn" onclick="checkCloudStatus()" style="width: auto; padding: 0.5rem 1rem; background: #2196f3;">🔍 Status prüfen</button>
+                    
+                    <!-- Cloud-Sync Toggle direkt bei den Buttons -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; border: 2px solid #ff6b35;">
+                        <span style="font-size: 0.9rem; font-weight: bold; color: #ff6b35;">☁️ Cloud-Sync:</span>
+                        <label class="toggle-switch" style="width: 50px; height: 28px;">
+                            <input type="checkbox" id="cloudSyncToggle" onchange="toggleCloudSync()" checked>
+                            <span class="toggle-slider" style="border-radius: 28px;"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Status-Anzeige -->
+                <div id="cloudSyncStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold; font-size: 0.9rem; background: rgba(76, 175, 80, 0.2); color: #4caf50;">
+                    ☁️ Cloud-Sync EIN - Automatische Synchronisation aktiv
+                </div>
+                
+                <div id="syncProgress" style="display: none; margin-top: 1rem; padding: 0.5rem; background: rgba(33,150,243,0.1); border-radius: 5px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #2196f3;">🔄 Synchronisation läuft...</div>
+                </div>
             </div>
         </div>
         
@@ -2351,6 +2373,16 @@ Synchronisation</h4>
         </div>
     `;
     updateDemoModeUI();
+    
+    // Cloud-Sync UI aktualisieren nach dem HTML-Rendering
+    setTimeout(() => {
+        if (window.updateSyncUI) {
+            window.updateSyncUI();
+        }
+        if (window.updateCloudSyncToggleUI) {
+            window.updateCloudSyncToggleUI();
+        }
+    }, 100);
 }
 
 // Generate Activity Logs
