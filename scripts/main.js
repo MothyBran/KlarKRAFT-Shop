@@ -3267,3 +3267,732 @@ window.onclick = function(event) {
         closeModal();
     }
 }
+
+// ========== FIREBASE INTEGRATION FOR KLARKRAFT SHOP ==========
+// Dieses Script zu main.js hinzufügen
+
+// Firebase Imports (müssen am Anfang der Datei stehen)
+import { 
+    getFirestore, 
+    collection, 
+    doc, 
+    addDoc, 
+    setDoc, 
+    getDoc, 
+    getDocs, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    where, 
+    orderBy, 
+    limit,
+    onSnapshot,
+    writeBatch
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+import { 
+    getAuth, 
+    signInAnonymously, 
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+// Firebase Initialization (nach der bestehenden Firebase Config)
+const db = getFirestore();
+const auth = getAuth();
+
+// Globale Firebase State Variables
+let firebaseInitialized = false;
+let currentFirebaseUser = null;
+
+// ========== FIREBASE INITIALIZATION ==========
+async function initializeFirebase() {
+    try {
+        // Anonymous Authentication für Session-Management
+        await signInAnonymously(auth);
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentFirebaseUser = user;
+                firebaseInitialized = true;
+                console.log('Firebase initialized successfully');
+                
+                // Migriere localStorage zu Firebase wenn nötig
+                migrateLocalStorageToFirebase();
+            }
+        });
+    } catch (error) {
+        console.error('Firebase initialization failed:', error);
+        showNotification('⚠️ Cloud-Synchronisation nicht verfügbar. Daten werden lokal gespeichert.');
+        firebaseInitialized = false;
+    }
+}
+
+// ========== FIREBASE HELPER FUNCTIONS ==========
+
+// Universelle Fehlerbehandlung
+function handleFirebaseError(error, fallbackAction) {
+    console.error('Firebase Error:', error);
+    if (fallbackAction) {
+        fallbackAction();
+    }
+    showNotification('⚠️ Cloud-Synchronisation temporär nicht verfügbar.');
+}
+
+// Daten-Validierung
+function validateData(data, requiredFields) {
+    for (const field of requiredFields) {
+        if (!data[field]) {
+            throw new Error(`Required field missing: ${field}`);
+        }
+    }
+    return true;
+}
+
+// ========== USER MANAGEMENT FUNCTIONS ==========
+
+// Benutzer speichern
+async function saveUserToFirebase(userData) {
+    if (!firebaseInitialized) {
+        return saveUserToLocalStorage(userData);
+    }
+
+    try {
+        validateData(userData, ['customerId', 'name', 'email']);
+        
+        await setDoc(doc(db, 'users', userData.customerId), {
+            ...userData,
+            updatedAt: new Date().toISOString(),
+            syncStatus: 'synced'
+        });
+        
+        logActivity('User Saved to Firebase', `User ${userData.name} saved to cloud`);
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => saveUserToLocalStorage(userData));
+        return false;
+    }
+}
+
+// Alle Benutzer laden
+async function loadUsersFromFirebase() {
+    if (!firebaseInitialized) {
+        return JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    }
+
+    try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        const users = [];
+        
+        querySnapshot.forEach((doc) => {
+            users.push({ id: doc.id, ...doc.data() });
+        });
+        
+        return users;
+    } catch (error) {
+        handleFirebaseError(error);
+        return JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    }
+}
+
+// Benutzer aktualisieren
+async function updateUserInFirebase(customerId, updateData) {
+    if (!firebaseInitialized) {
+        return updateUserInLocalStorage(customerId, updateData);
+    }
+
+    try {
+        const userRef = doc(db, 'users', customerId);
+        await updateDoc(userRef, {
+            ...updateData,
+            updatedAt: new Date().toISOString()
+        });
+        
+        logActivity('User Updated in Firebase', `User ${customerId} updated in cloud`);
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => updateUserInLocalStorage(customerId, updateData));
+        return false;
+    }
+}
+
+// Benutzer löschen
+async function deleteUserFromFirebase(customerId) {
+    if (!firebaseInitialized) {
+        return deleteUserFromLocalStorage(customerId);
+    }
+
+    try {
+        await deleteDoc(doc(db, 'users', customerId));
+        logActivity('User Deleted from Firebase', `User ${customerId} deleted from cloud`);
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => deleteUserFromLocalStorage(customerId));
+        return false;
+    }
+}
+
+// ========== ORDER MANAGEMENT FUNCTIONS ==========
+
+// Bestellung speichern
+async function saveOrderToFirebase(orderData) {
+    if (!firebaseInitialized) {
+        return saveOrderToLocalStorage(orderData);
+    }
+
+    try {
+        validateData(orderData, ['orderId', 'customerId', 'total']);
+        
+        await setDoc(doc(db, 'orders', orderData.orderId), {
+            ...orderData,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            syncStatus: 'synced'
+        });
+        
+        logActivity('Order Saved to Firebase', `Order ${orderData.orderId} saved to cloud`);
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => saveOrderToLocalStorage(orderData));
+        return false;
+    }
+}
+
+// Alle Bestellungen laden
+async function loadOrdersFromFirebase() {
+    if (!firebaseInitialized) {
+        return JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+    }
+
+    try {
+        const q = query(
+            collection(db, 'orders'), 
+            orderBy('orderDate', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const orders = [];
+        
+        querySnapshot.forEach((doc) => {
+            orders.push({ id: doc.id, ...doc.data() });
+        });
+        
+        return orders;
+    } catch (error) {
+        handleFirebaseError(error);
+        return JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+    }
+}
+
+// Bestellung aktualisieren
+async function updateOrderInFirebase(orderId, updateData) {
+    if (!firebaseInitialized) {
+        return updateOrderInLocalStorage(orderId, updateData);
+    }
+
+    try {
+        const orderRef = doc(db, 'orders', orderId);
+        await updateDoc(orderRef, {
+            ...updateData,
+            updatedAt: new Date().toISOString()
+        });
+        
+        logActivity('Order Updated in Firebase', `Order ${orderId} updated in cloud`);
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => updateOrderInLocalStorage(orderId, updateData));
+        return false;
+    }
+}
+
+// Bestellungen nach Kunde laden
+async function loadOrdersByCustomerFromFirebase(customerId) {
+    if (!firebaseInitialized) {
+        return JSON.parse(localStorage.getItem('klarkraft_orders') || '[]')
+            .filter(order => order.customerId === customerId);
+    }
+
+    try {
+        const q = query(
+            collection(db, 'orders'),
+            where('customerId', '==', customerId),
+            orderBy('orderDate', 'desc')
+        );
+        const querySnapshot = await getDocs(q);
+        const orders = [];
+        
+        querySnapshot.forEach((doc) => {
+            orders.push({ id: doc.id, ...doc.data() });
+        });
+        
+        return orders;
+    } catch (error) {
+        handleFirebaseError(error);
+        return JSON.parse(localStorage.getItem('klarkraft_orders') || '[]')
+            .filter(order => order.customerId === customerId);
+    }
+}
+
+// ========== ACTIVITY LOGS MANAGEMENT ==========
+
+// Aktivität speichern
+async function saveActivityLogToFirebase(activityData) {
+    if (!firebaseInitialized) {
+        return saveActivityLogToLocalStorage(activityData);
+    }
+
+    try {
+        await addDoc(collection(db, 'activityLogs'), {
+            ...activityData,
+            createdAt: new Date().toISOString(),
+            syncStatus: 'synced'
+        });
+        
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => saveActivityLogToLocalStorage(activityData));
+        return false;
+    }
+}
+
+// Aktivitätslogs laden
+async function loadActivityLogsFromFirebase(limitCount = 100) {
+    if (!firebaseInitialized) {
+        return JSON.parse(localStorage.getItem('klarkraft_activity_logs') || '[]');
+    }
+
+    try {
+        const q = query(
+            collection(db, 'activityLogs'),
+            orderBy('timestamp', 'desc'),
+            limit(limitCount)
+        );
+        const querySnapshot = await getDocs(q);
+        const logs = [];
+        
+        querySnapshot.forEach((doc) => {
+            logs.push({ id: doc.id, ...doc.data() });
+        });
+        
+        return logs;
+    } catch (error) {
+        handleFirebaseError(error);
+        return JSON.parse(localStorage.getItem('klarkraft_activity_logs') || '[]');
+    }
+}
+
+// ========== SETTINGS MANAGEMENT ==========
+
+// Einstellung speichern
+async function saveSettingToFirebase(key, value) {
+    if (!firebaseInitialized) {
+        return localStorage.setItem(key, value);
+    }
+
+    try {
+        await setDoc(doc(db, 'settings', key), {
+            value: value,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentMaster ? currentMaster.name : 'System'
+        });
+        
+        return true;
+    } catch (error) {
+        handleFirebaseError(error, () => localStorage.setItem(key, value));
+        return false;
+    }
+}
+
+// Einstellung laden
+async function loadSettingFromFirebase(key, defaultValue = null) {
+    if (!firebaseInitialized) {
+        return localStorage.getItem(key) || defaultValue;
+    }
+
+    try {
+        const docRef = doc(db, 'settings', key);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            return docSnap.data().value;
+        } else {
+            return defaultValue;
+        }
+    } catch (error) {
+        handleFirebaseError(error);
+        return localStorage.getItem(key) || defaultValue;
+    }
+}
+
+// ========== FALLBACK LOCALSTORAGE FUNCTIONS ==========
+
+function saveUserToLocalStorage(userData) {
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const existingIndex = users.findIndex(u => u.customerId === userData.customerId);
+    
+    if (existingIndex !== -1) {
+        users[existingIndex] = userData;
+    } else {
+        users.push(userData);
+    }
+    
+    localStorage.setItem('klarkraft_users', JSON.stringify(users));
+}
+
+function updateUserInLocalStorage(customerId, updateData) {
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const userIndex = users.findIndex(u => u.customerId === customerId);
+    
+    if (userIndex !== -1) {
+        users[userIndex] = { ...users[userIndex], ...updateData };
+        localStorage.setItem('klarkraft_users', JSON.stringify(users));
+    }
+}
+
+function deleteUserFromLocalStorage(customerId) {
+    const users = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+    const filteredUsers = users.filter(u => u.customerId !== customerId);
+    localStorage.setItem('klarkraft_users', JSON.stringify(filteredUsers));
+}
+
+function saveOrderToLocalStorage(orderData) {
+    const orders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+    const existingIndex = orders.findIndex(o => o.orderId === orderData.orderId);
+    
+    if (existingIndex !== -1) {
+        orders[existingIndex] = orderData;
+    } else {
+        orders.push(orderData);
+    }
+    
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+}
+
+function updateOrderInLocalStorage(orderId, updateData) {
+    const orders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+    const orderIndex = orders.findIndex(o => o.orderId === orderId);
+    
+    if (orderIndex !== -1) {
+        orders[orderIndex] = { ...orders[orderIndex], ...updateData };
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+    }
+}
+
+function saveActivityLogToLocalStorage(activityData) {
+    const logs = JSON.parse(localStorage.getItem('klarkraft_activity_logs') || '[]');
+    logs.unshift(activityData);
+    
+    if (logs.length > 100) {
+        logs.splice(100);
+    }
+    
+    localStorage.setItem('klarkraft_activity_logs', JSON.stringify(logs));
+}
+
+// ========== MIGRATION FUNCTIONS ==========
+
+// Migriere bestehende localStorage Daten zu Firebase
+async function migrateLocalStorageToFirebase() {
+    if (!firebaseInitialized) return;
+
+    try {
+        // Migriere Benutzer
+        const localUsers = JSON.parse(localStorage.getItem('klarkraft_users') || '[]');
+        if (localUsers.length > 0) {
+            const batch = writeBatch(db);
+            
+            localUsers.forEach(user => {
+                const userRef = doc(db, 'users', user.customerId);
+                batch.set(userRef, {
+                    ...user,
+                    migratedAt: new Date().toISOString(),
+                    syncStatus: 'migrated'
+                });
+            });
+            
+            await batch.commit();
+            console.log(`Migrated ${localUsers.length} users to Firebase`);
+        }
+
+        // Migriere Bestellungen
+        const localOrders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+        if (localOrders.length > 0) {
+            const batch = writeBatch(db);
+            
+            localOrders.forEach(order => {
+                const orderRef = doc(db, 'orders', order.orderId);
+                batch.set(orderRef, {
+                    ...order,
+                    migratedAt: new Date().toISOString(),
+                    syncStatus: 'migrated'
+                });
+            });
+            
+            await batch.commit();
+            console.log(`Migrated ${localOrders.length} orders to Firebase`);
+        }
+
+        // Migriere Aktivitätslogs
+        const localLogs = JSON.parse(localStorage.getItem('klarkraft_activity_logs') || '[]');
+        if (localLogs.length > 0) {
+            const batch = writeBatch(db);
+            
+            localLogs.slice(0, 50).forEach((log, index) => { // Nur die letzten 50 migrieren
+                const logRef = doc(collection(db, 'activityLogs'));
+                batch.set(logRef, {
+                    ...log,
+                    migratedAt: new Date().toISOString(),
+                    syncStatus: 'migrated'
+                });
+            });
+            
+            await batch.commit();
+            console.log(`Migrated ${Math.min(localLogs.length, 50)} activity logs to Firebase`);
+        }
+
+        // Migriere Einstellungen
+        const demoMode = localStorage.getItem('klarkraft_demo_mode');
+        if (demoMode !== null) {
+            await saveSettingToFirebase('klarkraft_demo_mode', demoMode);
+        }
+
+        showNotification('✅ Daten erfolgreich in die Cloud synchronisiert!');
+        
+    } catch (error) {
+        console.error('Migration failed:', error);
+        showNotification('⚠️ Datenmigration teilweise fehlgeschlagen.');
+    }
+}
+
+// ========== UPDATED MAIN FUNCTIONS ==========
+
+// Überschreibe die bestehenden Funktionen mit Firebase-Integration
+
+// Updated User Data Function
+async function updateUserDataWithFirebase() {
+    if (currentUser) {
+        await saveUserToFirebase(currentUser);
+        localStorage.setItem('klarkraft_currentUser', JSON.stringify(currentUser));
+        updateUserInterface();
+    }
+}
+
+// Updated Order Save Function
+async function saveOrderWithFirebase(orderData) {
+    orders.push(orderData);
+    await saveOrderToFirebase(orderData);
+    localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+}
+
+// Updated Log Activity Function
+async function logActivityWithFirebase(action, details) {
+    const log = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        user: currentMaster ? currentMaster.name : (currentUser ? currentUser.name : 'System'),
+        role: currentMaster ? currentMaster.role : 'Customer',
+        action: action,
+        details: details
+    };
+    
+    activityLogs.unshift(log);
+    await saveActivityLogToFirebase(log);
+    
+    if (activityLogs.length > 100) {
+        activityLogs = activityLogs.slice(0, 100);
+    }
+    
+    localStorage.setItem('klarkraft_activity_logs', JSON.stringify(activityLogs));
+}
+
+// Updated Demo Mode Functions
+async function getDemoModeStateFromFirebase() {
+    const value = await loadSettingFromFirebase('klarkraft_demo_mode', 'false');
+    return value === 'true';
+}
+
+async function setDemoModeStateWithFirebase(enabled) {
+    await saveSettingToFirebase('klarkraft_demo_mode', enabled.toString());
+    localStorage.setItem('klarkraft_demo_mode', enabled.toString());
+}
+
+// ========== REAL-TIME UPDATES ==========
+
+// Echtzeit-Updates für Bestellungen (für Master Dashboard)
+function setupRealtimeOrderUpdates() {
+    if (!firebaseInitialized) return;
+
+    const q = query(collection(db, 'orders'), orderBy('orderDate', 'desc'));
+    
+    onSnapshot(q, (querySnapshot) => {
+        const updatedOrders = [];
+        querySnapshot.forEach((doc) => {
+            updatedOrders.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Update global orders array
+        orders = updatedOrders;
+        localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+        
+        // Update UI if master is logged in
+        if (currentMaster) {
+            updateOrdersCounter();
+            
+            // Update dashboard if open
+            if (document.getElementById('masterDashboardModal').style.display === 'block') {
+                loadMasterOrders();
+            }
+            
+            // Update new orders if open
+            if (document.getElementById('newOrdersModal').style.display === 'block') {
+                showNewOrders();
+            }
+        }
+    }, (error) => {
+        console.error('Real-time orders update failed:', error);
+    });
+}
+
+// ========== ADMIN FUNCTIONS ==========
+
+// Datenexport mit Firebase-Daten
+async function exportAllDataWithFirebase() {
+    try {
+        const [users, orders, logs] = await Promise.all([
+            loadUsersFromFirebase(),
+            loadOrdersFromFirebase(),
+            loadActivityLogsFromFirebase(200)
+        ]);
+        
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            exportBy: currentMaster ? currentMaster.name : 'System',
+            dataSource: firebaseInitialized ? 'Firebase + LocalStorage' : 'LocalStorage Only',
+            users: users,
+            orders: orders,
+            activityLogs: logs,
+            summary: {
+                totalUsers: users.length,
+                totalOrders: orders.length,
+                totalRevenue: orders.reduce((sum, order) => sum + order.total, 0),
+                totalLogs: logs.length
+            }
+        };
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `KlarKRAFT_Export_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        showNotification('📊 Vollständiger Datenexport abgeschlossen!');
+        logActivityWithFirebase('Data Export', 'Complete data export performed');
+        
+    } catch (error) {
+        console.error('Export failed:', error);
+        showNotification('❌ Datenexport fehlgeschlagen.');
+    }
+}
+
+// Daten löschen mit Firebase
+async function clearTestDataWithFirebase() {
+    if (!confirm('🗑️ Möchten Sie wirklich alle Test-Daten löschen?')) return;
+    
+    try {
+        if (firebaseInitialized) {
+            // Lösche Firebase Daten
+            const [usersSnapshot, ordersSnapshot, logsSnapshot] = await Promise.all([
+                getDocs(collection(db, 'users')),
+                getDocs(collection(db, 'orders')),
+                getDocs(collection(db, 'activityLogs'))
+            ]);
+            
+            const batch = writeBatch(db);
+            
+            usersSnapshot.forEach(doc => batch.delete(doc.ref));
+            ordersSnapshot.forEach(doc => batch.delete(doc.ref));
+            logsSnapshot.forEach(doc => batch.delete(doc.ref));
+            
+            await batch.commit();
+        }
+        
+        // Lösche lokale Daten
+        localStorage.removeItem('klarkraft_users');
+        localStorage.removeItem('klarkraft_orders');
+        localStorage.removeItem('klarkraft_activity_logs');
+        localStorage.removeItem('klarkraft_currentUser');
+        
+        // Reset globale Variablen
+        orders = [];
+        activityLogs = [];
+        currentUser = null;
+        
+        updateUserInterface();
+        showNotification('🗑️ Alle Test-Daten wurden gelöscht!');
+        
+    } catch (error) {
+        console.error('Clear data failed:', error);
+        showNotification('❌ Daten löschen fehlgeschlagen.');
+    }
+}
+
+// ========== INITIALIZATION UPDATE ==========
+
+// Erweiterte Initialisierung mit Firebase
+async function initWithFirebase() {
+    // Initialisiere Firebase
+    await initializeFirebase();
+    
+    // Lade Daten von Firebase wenn verfügbar
+    if (firebaseInitialized) {
+        try {
+            const [firebaseUsers, firebaseOrders, firebaseLogs] = await Promise.all([
+                loadUsersFromFirebase(),
+                loadOrdersFromFirebase(),
+                loadActivityLogsFromFirebase()
+            ]);
+            
+            // Update globale Variablen
+            if (firebaseUsers.length > 0) {
+                const users = firebaseUsers;
+                localStorage.setItem('klarkraft_users', JSON.stringify(users));
+            }
+            
+            if (firebaseOrders.length > 0) {
+                orders = firebaseOrders;
+                localStorage.setItem('klarkraft_orders', JSON.stringify(orders));
+            }
+            
+            if (firebaseLogs.length > 0) {
+                activityLogs = firebaseLogs;
+                localStorage.setItem('klarkraft_activity_logs', JSON.stringify(activityLogs));
+            }
+            
+            // Setup real-time updates
+            setupRealtimeOrderUpdates();
+            
+        } catch (error) {
+            console.error('Firebase data loading failed:', error);
+        }
+    }
+    
+    // Führe normale Initialisierung durch
+    init();
+}
+
+// ========== REPLACE EXISTING FUNCTIONS ==========
+
+// Ersetze die bestehenden Funktionen
+window.updateUserData = updateUserDataWithFirebase;
+window.logActivity = logActivityWithFirebase;
+window.getDemoModeState = getDemoModeStateFromFirebase;
+window.setDemoModeState = setDemoModeStateWithFirebase;
+window.exportAllData = exportAllDataWithFirebase;
+window.clearTestData = clearTestDataWithFirebase;
+
+// Starte Firebase-erweiterte Initialisierung
+document.addEventListener('DOMContentLoaded', function() {
+    initWithFirebase();
+});
+
+console.log('🔥 Firebase Integration loaded successfully!');
