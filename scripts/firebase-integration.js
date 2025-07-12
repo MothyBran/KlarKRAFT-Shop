@@ -1,14 +1,5 @@
-// ========== KLARKRAFT FIREBASE CLOUD SYNCHRONISATION (DEBUG VERSION) ==========
-// Verbesserte Integration mit erweiterten Debugging-Features
-
-// ========== DEBUG & LOGGING ==========
-const DEBUG_MODE = true;
-function debugLog(message, data = null) {
-    if (DEBUG_MODE) {
-        const timestamp = new Date().toLocaleTimeString();
-        console.log(`🔧 [${timestamp}] Firebase Debug:`, message, data || '');
-    }
-}
+// ========== KLARKRAFT FIREBASE CLOUD SYNCHRONISATION (PRODUCTION) ==========
+// Vollständige Cloud-Synchronisation mit allen Features
 
 // ========== FIREBASE INITIALIZATION ==========
 let firebaseApp = null;
@@ -18,71 +9,56 @@ let lastSyncTime = null;
 let syncInProgress = false;
 let autoSyncInterval = null;
 let initializationAttempts = 0;
-const MAX_INIT_ATTEMPTS = 5;
+const MAX_INIT_ATTEMPTS = 3;
 
-// Verbesserte Firebase-Initialisierung
+// Firebase initialisieren
 async function initializeFirebase() {
     initializationAttempts++;
-    debugLog(`Initialisierung Versuch ${initializationAttempts}/${MAX_INIT_ATTEMPTS}`);
+    console.log(`🔥 Firebase Initialisierung Versuch ${initializationAttempts}/${MAX_INIT_ATTEMPTS}`);
     
     try {
-        // Schritt 1: Prüfe ob Firebase App verfügbar ist
         if (!window.firebaseApp) {
-            debugLog('❌ window.firebaseApp nicht verfügbar');
-            updateSyncStatus('offline', 'Firebase App nicht gefunden');
-            return false;
+            throw new Error('Firebase App nicht verfügbar');
         }
         
         firebaseApp = window.firebaseApp;
-        debugLog('✅ Firebase App gefunden', firebaseApp);
+        console.log('✅ Firebase App gefunden');
         
-        // Schritt 2: Importiere Firestore dynamisch
-        debugLog('📦 Importiere Firestore...');
-        const firestoreModule = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
-        debugLog('✅ Firestore-Modul importiert', Object.keys(firestoreModule));
+        // Firestore importieren und initialisieren
+        const { getFirestore } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+        firestore = getFirestore(firebaseApp);
         
-        // Schritt 3: Initialisiere Firestore
-        firestore = firestoreModule.getFirestore(firebaseApp);
-        debugLog('✅ Firestore initialisiert', firestore);
+        // Verbindung testen
+        await testFirestoreConnection();
         
-        // Schritt 4: Teste Verbindung
-        debugLog('🔍 Teste Firestore-Verbindung...');
-        const testResult = await testFirestoreConnection(firestoreModule);
+        isFirebaseAvailable = true;
+        console.log('🎉 Firebase Firestore erfolgreich initialisiert');
         
-        if (testResult) {
-            isFirebaseAvailable = true;
-            debugLog('🎉 Firebase erfolgreich initialisiert!');
-            updateSyncStatus('available', 'Erfolgreich initialisiert');
-            
-            // Auto-Sync starten
-            startAutoSync();
-            
-            // Initial-Sync nach kurzer Verzögerung
-            setTimeout(() => {
-                if (window.currentMaster) {
-                    debugLog('👔 Master erkannt - starte Initial-Sync');
-                    manualSync();
-                }
-            }, 3000);
-            
-            return true;
-        } else {
-            throw new Error('Firestore-Verbindungstest fehlgeschlagen');
-        }
+        updateSyncStatus('available', 'Cloud-Synchronisation bereit');
+        startAutoSync();
+        
+        // Initial-Sync nach kurzer Verzögerung
+        setTimeout(() => {
+            if (window.currentMaster) {
+                console.log('👔 Master erkannt - starte Initial-Sync');
+                manualSync();
+            }
+        }, 3000);
+        
+        return true;
         
     } catch (error) {
-        debugLog('❌ Firebase Initialisierung fehlgeschlagen:', error);
+        console.error('❌ Firebase Initialisierung fehlgeschlagen:', error);
         updateSyncStatus('error', `Init-Fehler: ${error.message}`);
         
-        // Retry-Mechanismus
         if (initializationAttempts < MAX_INIT_ATTEMPTS) {
-            debugLog(`🔄 Retry in 3 Sekunden... (${initializationAttempts}/${MAX_INIT_ATTEMPTS})`);
+            console.log(`🔄 Retry in 5 Sekunden...`);
             setTimeout(() => {
                 initializeFirebase();
-            }, 3000);
+            }, 5000);
         } else {
-            debugLog('💀 Maximale Versuche erreicht - Firebase bleibt deaktiviert');
-            updateSyncStatus('offline', 'Initialisierung fehlgeschlagen');
+            console.log('💀 Maximale Versuche erreicht');
+            updateSyncStatus('offline', 'Cloud nicht verfügbar');
         }
         
         return false;
@@ -90,34 +66,32 @@ async function initializeFirebase() {
 }
 
 // Teste Firestore-Verbindung
-async function testFirestoreConnection(firestoreModule) {
+async function testFirestoreConnection() {
     try {
-        const { doc, getDoc, setDoc } = firestoreModule;
+        const { doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
         const testRef = doc(firestore, 'system', 'connection_test');
         
-        // Schreibe Test-Dokument
         await setDoc(testRef, {
             test: true,
             timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent
+            testBy: window.currentMaster?.name || 'System'
         });
         
-        // Lese Test-Dokument
         const testDoc = await getDoc(testRef);
         const success = testDoc.exists();
         
-        debugLog('🔍 Verbindungstest:', success ? '✅ Erfolgreich' : '❌ Fehlgeschlagen');
+        console.log('🔍 Verbindungstest:', success ? '✅ Erfolgreich' : '❌ Fehlgeschlagen');
         return success;
         
     } catch (error) {
-        debugLog('❌ Verbindungstest-Fehler:', error);
-        return false;
+        console.error('❌ Verbindungstest fehlgeschlagen:', error);
+        throw error;
     }
 }
 
 // ========== SYNC STATUS MANAGEMENT ==========
 function updateSyncStatus(status, message, lastSync = null) {
-    debugLog(`📊 Status Update: ${status} - ${message}`);
+    console.log(`📊 Sync Status: ${status} - ${message}`);
     
     const statusElement = document.getElementById('cloudStatusText');
     const firebaseElement = document.getElementById('firebaseAvailable');
@@ -134,20 +108,17 @@ function updateSyncStatus(status, message, lastSync = null) {
                 statusElement.style.color = '#ff9800';
                 break;
             case 'error':
-                statusElement.textContent = '❌ Fehler';
+                statusElement.textContent = '⚠️ Fehler';
                 statusElement.style.color = '#f44336';
                 break;
             case 'offline':
-                statusElement.textContent = '📴 Nicht verfügbar';
+                statusElement.textContent = '📴 Offline';
                 statusElement.style.color = '#9e9e9e';
                 break;
             case 'testing':
                 statusElement.textContent = '🔍 Wird geprüft...';
                 statusElement.style.color = '#2196f3';
                 break;
-            default:
-                statusElement.textContent = '❓ Unbekannt';
-                statusElement.style.color = '#9e9e9e';
         }
     }
     
@@ -166,7 +137,6 @@ function updateSyncStatus(status, message, lastSync = null) {
         }
     }
     
-    // Update Sync UI
     updateSyncUI();
 }
 
@@ -175,16 +145,13 @@ class FirebaseCollection {
     constructor(collectionName, localStorageKey) {
         this.collectionName = collectionName;
         this.localStorageKey = localStorageKey;
-        debugLog(`📁 Collection erstellt: ${collectionName} -> ${localStorageKey}`);
     }
     
     getLocalData() {
         try {
-            const data = JSON.parse(localStorage.getItem(this.localStorageKey) || '[]');
-            debugLog(`📥 Lokale Daten geladen: ${this.localStorageKey} (${data.length} Einträge)`);
-            return data;
+            return JSON.parse(localStorage.getItem(this.localStorageKey) || '[]');
         } catch (error) {
-            debugLog(`❌ Fehler beim Laden lokaler Daten für ${this.localStorageKey}:`, error);
+            console.error(`Fehler beim Laden lokaler Daten für ${this.localStorageKey}:`, error);
             return [];
         }
     }
@@ -192,19 +159,15 @@ class FirebaseCollection {
     setLocalData(data) {
         try {
             localStorage.setItem(this.localStorageKey, JSON.stringify(data));
-            debugLog(`💾 Lokale Daten gespeichert: ${this.localStorageKey} (${data.length} Einträge)`);
             return true;
         } catch (error) {
-            debugLog(`❌ Fehler beim Speichern lokaler Daten für ${this.localStorageKey}:`, error);
+            console.error(`Fehler beim Speichern lokaler Daten für ${this.localStorageKey}:`, error);
             return false;
         }
     }
     
     async getCloudData() {
-        if (!isFirebaseAvailable) {
-            debugLog(`⚠️ Firebase nicht verfügbar für ${this.collectionName}`);
-            return [];
-        }
+        if (!isFirebaseAvailable) return [];
         
         try {
             const { collection, getDocs, query, orderBy } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
@@ -220,20 +183,17 @@ class FirebaseCollection {
                 });
             });
             
-            debugLog(`☁️ Cloud-Daten geladen: ${this.collectionName} (${cloudData.length} Einträge)`);
+            console.log(`☁️ ${this.collectionName}: ${cloudData.length} Items aus Cloud geladen`);
             return cloudData;
             
         } catch (error) {
-            debugLog(`❌ Fehler beim Laden der Cloud-Daten für ${this.collectionName}:`, error);
+            console.error(`❌ Cloud-Daten laden fehlgeschlagen für ${this.collectionName}:`, error);
             throw error;
         }
     }
     
     async saveToCloud(docId, data) {
-        if (!isFirebaseAvailable) {
-            debugLog(`⚠️ Firebase nicht verfügbar - überspringe Cloud-Speicherung für ${docId}`);
-            return false;
-        }
+        if (!isFirebaseAvailable) return false;
         
         try {
             const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
@@ -242,30 +202,28 @@ class FirebaseCollection {
             const dataWithTimestamp = {
                 ...data,
                 lastModified: new Date().toISOString(),
-                syncedAt: new Date().toISOString()
+                syncedAt: new Date().toISOString(),
+                syncedBy: window.currentMaster?.name || 'System'
             };
             
             await setDoc(docRef, dataWithTimestamp, { merge: true });
-            debugLog(`☁️ Cloud-Speicherung erfolgreich: ${this.collectionName}/${docId}`);
+            console.log(`☁️ ${this.collectionName}/${docId} in Cloud gespeichert`);
             return true;
             
         } catch (error) {
-            debugLog(`❌ Fehler beim Speichern in Cloud für ${this.collectionName}/${docId}:`, error);
+            console.error(`❌ Cloud-Speicherung fehlgeschlagen für ${this.collectionName}/${docId}:`, error);
             throw error;
         }
     }
     
     async batchSaveToCloud(dataArray) {
-        if (!isFirebaseAvailable || dataArray.length === 0) {
-            debugLog(`⚠️ Batch-Upload übersprungen: Firebase=${isFirebaseAvailable}, Items=${dataArray.length}`);
-            return false;
-        }
+        if (!isFirebaseAvailable || dataArray.length === 0) return false;
         
         try {
             const { writeBatch, doc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
             const batch = writeBatch(firestore);
             
-            const batchSize = 50; // Firestore Limit
+            const batchSize = 50;
             const items = dataArray.slice(0, batchSize);
             
             for (const item of items) {
@@ -275,18 +233,19 @@ class FirebaseCollection {
                 const dataWithTimestamp = {
                     ...item,
                     lastModified: new Date().toISOString(),
-                    syncedAt: new Date().toISOString()
+                    syncedAt: new Date().toISOString(),
+                    syncedBy: window.currentMaster?.name || 'System'
                 };
                 
                 batch.set(docRef, dataWithTimestamp, { merge: true });
             }
             
             await batch.commit();
-            debugLog(`📦 Batch-Upload erfolgreich: ${this.collectionName} (${items.length} Items)`);
+            console.log(`📦 Batch-Upload: ${items.length} Items für ${this.collectionName}`);
             return true;
             
         } catch (error) {
-            debugLog(`❌ Fehler beim Batch-Upload für ${this.collectionName}:`, error);
+            console.error(`❌ Batch-Upload fehlgeschlagen für ${this.collectionName}:`, error);
             throw error;
         }
     }
@@ -312,23 +271,23 @@ class SyncManager {
             orders: new FirebaseCollection('klarkraft_orders', 'klarkraft_orders'),
             activityLogs: new FirebaseCollection('klarkraft_activity_logs', 'klarkraft_activity_logs')
         };
-        debugLog('🎯 SyncManager initialisiert');
+        console.log('🎯 SyncManager initialisiert');
     }
     
     async fullSync() {
         if (syncInProgress) {
-            debugLog('⏳ Synchronisation bereits aktiv, überspringe...');
+            console.log('⏳ Synchronisation bereits aktiv');
             return false;
         }
         
         if (!isFirebaseAvailable) {
-            debugLog('⚠️ Firebase nicht verfügbar für Synchronisation');
+            console.log('⚠️ Firebase nicht verfügbar für Synchronisation');
             return false;
         }
         
         syncInProgress = true;
-        updateSyncStatus('syncing', 'Vollständige Synchronisation läuft...');
-        debugLog('🚀 Starte vollständige Synchronisation');
+        updateSyncStatus('syncing', 'Cloud-Synchronisation läuft...');
+        console.log('🚀 Starte vollständige Cloud-Synchronisation');
         
         try {
             let syncResults = {
@@ -337,34 +296,33 @@ class SyncManager {
                 activityLogs: { uploaded: 0, downloaded: 0, errors: 0 }
             };
             
-            // Upload lokale Änderungen
-            debugLog('📤 Starte Upload-Phase...');
+            // Upload-Phase
+            console.log('📤 Upload-Phase gestartet...');
             for (const [key, collection] of Object.entries(this.collections)) {
                 try {
                     const uploadResult = await this.uploadLocalChanges(collection);
                     syncResults[key].uploaded = uploadResult;
-                    debugLog(`📤 ${key}: ${uploadResult} Items hochgeladen`);
+                    console.log(`📤 ${key}: ${uploadResult} Items hochgeladen`);
                 } catch (error) {
-                    debugLog(`❌ Upload-Fehler für ${key}:`, error);
+                    console.error(`❌ Upload-Fehler für ${key}:`, error);
                     syncResults[key].errors++;
                 }
             }
             
-            // Download Cloud-Änderungen
-            debugLog('📥 Starte Download-Phase...');
+            // Download-Phase
+            console.log('📥 Download-Phase gestartet...');
             for (const [key, collection] of Object.entries(this.collections)) {
                 try {
                     const downloadResult = await this.downloadCloudChanges(collection);
                     syncResults[key].downloaded = downloadResult;
-                    debugLog(`📥 ${key}: ${downloadResult} Items heruntergeladen`);
+                    console.log(`📥 ${key}: ${downloadResult} Items heruntergeladen`);
                 } catch (error) {
-                    debugLog(`❌ Download-Fehler für ${key}:`, error);
+                    console.error(`❌ Download-Fehler für ${key}:`, error);
                     syncResults[key].errors++;
                 }
             }
             
-            // System-Einstellungen synchronisieren
-            debugLog('⚙️ Synchronisiere System-Einstellungen...');
+            // System-Einstellungen
             await this.syncSystemSettings();
             
             const now = new Date().toISOString();
@@ -375,10 +333,10 @@ class SyncManager {
             const totalDownloaded = Object.values(syncResults).reduce((sum, result) => sum + result.downloaded, 0);
             const totalErrors = Object.values(syncResults).reduce((sum, result) => sum + result.errors, 0);
             
-            updateSyncStatus('available', `Sync erfolgreich: ↑${totalUploaded} ↓${totalDownloaded}`, now);
-            debugLog(`✅ Synchronisation abgeschlossen: ${totalUploaded}↑ ${totalDownloaded}↓ ${totalErrors}❌`);
+            updateSyncStatus('available', `Sync: ↑${totalUploaded} ↓${totalDownloaded} ${totalErrors ? '⚠️' + totalErrors : ''}`, now);
+            console.log(`✅ Cloud-Sync abgeschlossen: ${totalUploaded}↑ ${totalDownloaded}↓ ${totalErrors}❌`);
             
-            // UI aktualisieren falls Master Dashboard offen
+            // UI aktualisieren
             if (window.currentMaster && document.getElementById('masterDashboardModal')?.style.display === 'block') {
                 setTimeout(() => {
                     if (typeof window.loadMasterOverview === 'function') {
@@ -390,8 +348,8 @@ class SyncManager {
             return true;
             
         } catch (error) {
-            debugLog('❌ Synchronisation fehlgeschlagen:', error);
-            updateSyncStatus('error', `Sync-Fehler: ${error.message}`);
+            console.error('❌ Cloud-Synchronisation fehlgeschlagen:', error);
+            updateSyncStatus('error', `Cloud-Sync-Fehler: ${error.message}`);
             return false;
         } finally {
             syncInProgress = false;
@@ -402,13 +360,14 @@ class SyncManager {
         const localData = collection.getLocalData();
         if (localData.length === 0) return 0;
         
+        // Filtere unsynchronisierte Daten
         const unsyncedData = localData.filter(item => {
             return !item.syncedAt || (item.lastModified && item.lastModified > item.syncedAt);
         });
         
         if (unsyncedData.length === 0) return 0;
         
-        debugLog(`📤 Upload ${unsyncedData.length} unsynced items für ${collection.collectionName}`);
+        console.log(`📤 Upload ${unsyncedData.length} unsynced Items für ${collection.collectionName}`);
         
         let uploadedCount = 0;
         const batchSize = 50;
@@ -429,7 +388,7 @@ class SyncManager {
                     }
                 });
             } catch (error) {
-                debugLog(`❌ Batch-Upload-Fehler für ${collection.collectionName}:`, error);
+                console.error(`❌ Batch-Upload-Fehler für ${collection.collectionName}:`, error);
             }
         }
         
@@ -452,9 +411,11 @@ class SyncManager {
                 );
                 
                 if (localIndex === -1) {
+                    // Neues Item aus Cloud
                     mergedData.push(cloudItem);
                     downloadedCount++;
                 } else {
+                    // Prüfe welche Version neuer ist
                     const localItem = mergedData[localIndex];
                     const cloudModified = new Date(cloudItem.lastModified || 0);
                     const localModified = new Date(localItem.lastModified || 0);
@@ -470,7 +431,7 @@ class SyncManager {
             return downloadedCount;
             
         } catch (error) {
-            debugLog(`❌ Download-Fehler für ${collection.collectionName}:`, error);
+            console.error(`❌ Download-Fehler für ${collection.collectionName}:`, error);
             throw error;
         }
     }
@@ -482,17 +443,20 @@ class SyncManager {
                 lastSync: lastSyncTime,
                 version: '1.0.0',
                 syncedBy: window.currentMaster?.name || 'System',
-                lastModified: new Date().toISOString()
+                lastModified: new Date().toISOString(),
+                totalUsers: JSON.parse(localStorage.getItem('klarkraft_users') || '[]').length,
+                totalOrders: JSON.parse(localStorage.getItem('klarkraft_orders') || '[]').length,
+                appVersion: 'KlarKRAFT 1.0.0'
             };
             
             const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
             const settingsRef = doc(firestore, 'klarkraft_settings', 'system');
             await setDoc(settingsRef, settings, { merge: true });
             
-            debugLog('⚙️ System-Einstellungen synchronisiert');
+            console.log('⚙️ System-Einstellungen in Cloud synchronisiert');
             return true;
         } catch (error) {
-            debugLog('❌ Fehler beim Synchronisieren der System-Einstellungen:', error);
+            console.error('❌ System-Settings-Sync fehlgeschlagen:', error);
             return false;
         }
     }
@@ -501,78 +465,77 @@ class SyncManager {
 // ========== GLOBAL SYNC MANAGER ==========
 const syncManager = new SyncManager();
 
-// ========== AUTO SYNC FUNCTIONS ==========
+// ========== AUTO SYNC ==========
 function startAutoSync() {
     if (autoSyncInterval) {
         clearInterval(autoSyncInterval);
     }
     
     if (!isFirebaseAvailable) {
-        debugLog('⚠️ Auto-Sync nicht gestartet - Firebase nicht verfügbar');
+        console.log('⚠️ Auto-Sync nicht gestartet - Firebase nicht verfügbar');
         return;
     }
     
     autoSyncInterval = setInterval(async () => {
         if (isFirebaseAvailable && !syncInProgress) {
-            debugLog('🔄 Automatische Synchronisation...');
+            console.log('🔄 Automatische Cloud-Synchronisation...');
             await syncManager.fullSync();
         }
     }, 30000); // 30 Sekunden
     
-    debugLog('✅ Automatische Synchronisation gestartet (alle 30s)');
+    console.log('✅ Automatische Cloud-Synchronisation gestartet (alle 30s)');
 }
 
 function stopAutoSync() {
     if (autoSyncInterval) {
         clearInterval(autoSyncInterval);
         autoSyncInterval = null;
-        debugLog('⏹️ Automatische Synchronisation gestoppt');
+        console.log('⏹️ Auto-Sync gestoppt');
     }
 }
 
-// ========== PUBLIC API FUNCTIONS ==========
-
+// ========== PUBLIC API ==========
 async function manualSync() {
-    debugLog('🔄 Manuelle Synchronisation gestartet');
+    console.log('🔄 Manuelle Cloud-Synchronisation gestartet');
     
     if (!isFirebaseAvailable) {
-        const message = 'Firebase nicht verfügbar. Internetverbindung prüfen!';
+        const message = 'Cloud nicht verfügbar. Internetverbindung prüfen!';
         if (window.showNotification) {
             window.showNotification(message, 'error');
         }
-        updateSyncStatus('offline', 'Firebase nicht verfügbar');
+        updateSyncStatus('offline', 'Cloud nicht verfügbar');
         return false;
     }
     
     if (syncInProgress) {
         if (window.showNotification) {
-            window.showNotification('Synchronisation läuft bereits...', 'info');
+            window.showNotification('⏳ Cloud-Synchronisation läuft bereits...', 'info');
         }
         return false;
     }
     
     try {
         if (window.showNotification) {
-            window.showNotification('🔄 Manuelle Synchronisation gestartet...', 'sync');
+            window.showNotification('🔄 Cloud-Synchronisation gestartet...', 'sync');
         }
         
         const success = await syncManager.fullSync();
         
         if (success) {
             if (window.showNotification) {
-                window.showNotification('✅ Synchronisation erfolgreich abgeschlossen!', 'success');
+                window.showNotification('✅ Cloud-Synchronisation erfolgreich!', 'success');
             }
         } else {
             if (window.showNotification) {
-                window.showNotification('⚠️ Synchronisation mit Fehlern abgeschlossen.', 'warning');
+                window.showNotification('⚠️ Cloud-Synchronisation mit Fehlern.', 'warning');
             }
         }
         
         return success;
     } catch (error) {
-        debugLog('❌ Fehler bei manueller Synchronisation:', error);
+        console.error('❌ Manuelle Cloud-Sync-Fehler:', error);
         if (window.showNotification) {
-            window.showNotification('❌ Synchronisation fehlgeschlagen: ' + error.message, 'error');
+            window.showNotification('❌ Cloud-Sync fehlgeschlagen: ' + error.message, 'error');
         }
         return false;
     }
@@ -581,18 +544,18 @@ async function manualSync() {
 function triggerAutoSyncOnChange(dataType) {
     if (!isFirebaseAvailable || syncInProgress) return;
     
-    debugLog(`🔄 Auto-Sync getriggert durch ${dataType}-Änderung`);
+    console.log(`🔄 Auto-Cloud-Sync getriggert durch ${dataType}-Änderung`);
     
     clearTimeout(window.autoSyncTimeout);
     window.autoSyncTimeout = setTimeout(async () => {
-        debugLog(`🔄 Auto-Sync ausgeführt für ${dataType}`);
+        console.log(`🔄 Auto-Cloud-Sync ausgeführt für ${dataType}`);
         await syncManager.fullSync();
-    }, 5000);
+    }, 5000); // 5 Sekunden Verzögerung
 }
 
 async function checkCloudStatus() {
-    debugLog('🔍 Prüfe Cloud-Status...');
-    updateSyncStatus('testing', 'Verbindung wird geprüft...');
+    console.log('🔍 Prüfe Cloud-Status...');
+    updateSyncStatus('testing', 'Cloud-Verbindung wird geprüft...');
     
     try {
         if (!window.firebaseApp) {
@@ -600,27 +563,27 @@ async function checkCloudStatus() {
             return false;
         }
         
-        // Reset initialization attempts
+        // Reset und neu initialisieren
         initializationAttempts = 0;
         const available = await initializeFirebase();
         
         if (available) {
-            updateSyncStatus('available', 'Verbindung erfolgreich');
+            updateSyncStatus('available', 'Cloud-Verbindung erfolgreich');
             
             const lastSync = localStorage.getItem('klarkraft_last_sync');
             if (lastSync) {
                 lastSyncTime = lastSync;
-                updateSyncStatus('available', 'Verbindung erfolgreich', lastSync);
+                updateSyncStatus('available', 'Cloud-Verbindung erfolgreich', lastSync);
             }
             
             return true;
         } else {
-            updateSyncStatus('offline', 'Verbindung fehlgeschlagen');
+            updateSyncStatus('offline', 'Cloud-Verbindung fehlgeschlagen');
             return false;
         }
     } catch (error) {
-        debugLog('❌ Fehler beim Prüfen des Cloud-Status:', error);
-        updateSyncStatus('error', 'Statusprüfung fehlgeschlagen');
+        console.error('❌ Cloud-Status-Prüfung fehlgeschlagen:', error);
+        updateSyncStatus('error', 'Cloud-Statusprüfung fehlgeschlagen');
         return false;
     }
 }
@@ -642,7 +605,7 @@ function updateSyncUI() {
     } else {
         if (syncBtn) {
             syncBtn.disabled = false;
-            syncBtn.textContent = '🔄 Manuell synchronisieren';
+            syncBtn.textContent = '🔄 Cloud synchronisieren';
             syncBtn.style.opacity = '1';
         }
         
@@ -655,9 +618,9 @@ function updateSyncUI() {
 // ========== NETWORK MONITORING ==========
 function setupNetworkMonitoring() {
     window.addEventListener('online', async () => {
-        debugLog('🌐 Internetverbindung wiederhergestellt');
+        console.log('🌐 Internetverbindung wiederhergestellt');
         if (window.showNotification) {
-            window.showNotification('🌐 Internetverbindung wiederhergestellt', 'info');
+            window.showNotification('🌐 Online - Cloud-Sync wird fortgesetzt', 'info');
         }
         
         setTimeout(async () => {
@@ -669,23 +632,22 @@ function setupNetworkMonitoring() {
     });
     
     window.addEventListener('offline', () => {
-        debugLog('📴 Internetverbindung verloren');
+        console.log('📴 Internetverbindung verloren');
         if (window.showNotification) {
-            window.showNotification('📴 Offline-Modus: Daten werden lokal gespeichert', 'warning');
+            window.showNotification('📴 Offline - Daten werden lokal gespeichert', 'warning');
         }
         stopAutoSync();
         updateSyncStatus('offline', 'Keine Internetverbindung');
     });
 }
 
-// ========== OVERRIDE FUNCTIONS ==========
-// Erweitere bestehende Funktionen um Auto-Sync
+// ========== FUNCTION OVERRIDES ==========
+// Erweitere bestehende Funktionen um Auto-Cloud-Sync
 const originalCompleteOrder = window.completeOrder;
 const originalUpdateOrderStatus = window.updateOrderStatus;
 const originalHandleRegister = window.handleRegister;
 const originalLogActivity = window.logActivity;
 
-// Order-Funktionen erweitern
 if (typeof window.completeOrder === 'function') {
     window.completeOrder = function(...args) {
         const result = originalCompleteOrder.apply(this, args);
@@ -720,12 +682,9 @@ if (typeof window.logActivity === 'function') {
 
 // ========== INITIALIZATION ==========
 async function initializeCloudSync() {
-    debugLog('🚀 Initialisiere Cloud-Synchronisation...');
+    console.log('🚀 Initialisiere Cloud-Synchronisation...');
     
-    // Netzwerk-Monitoring einrichten
     setupNetworkMonitoring();
-    
-    // Initiale Status-Anzeige
     updateSyncStatus('testing', 'Initialisierung...');
     
     // Warte auf Firebase
@@ -734,17 +693,17 @@ async function initializeCloudSync() {
     
     const waitForFirebase = () => {
         attempts++;
-        debugLog(`⏳ Warte auf Firebase... (${attempts}/${maxAttempts})`);
+        console.log(`⏳ Warte auf Firebase... (${attempts}/${maxAttempts})`);
         
         if (window.firebaseApp) {
-            debugLog('✅ Firebase App gefunden - starte Initialisierung');
+            console.log('✅ Firebase App gefunden - starte Cloud-Initialisierung');
             setTimeout(() => {
                 initializeFirebase();
             }, 1000);
         } else if (attempts < maxAttempts) {
             setTimeout(waitForFirebase, 1000);
         } else {
-            debugLog('❌ Firebase nach 10 Versuchen nicht gefunden');
+            console.log('❌ Firebase nach 10 Versuchen nicht gefunden');
             updateSyncStatus('offline', 'Firebase nicht verfügbar');
         }
     };
@@ -752,28 +711,13 @@ async function initializeCloudSync() {
     waitForFirebase();
 }
 
-// ========== GLOBAL EXPOSURE ==========
+// ========== GLOBAL FUNCTIONS ==========
 window.manualSync = manualSync;
 window.checkCloudStatus = checkCloudStatus;
 window.triggerAutoSyncOnChange = triggerAutoSyncOnChange;
 window.isFirebaseAvailable = () => isFirebaseAvailable;
 window.syncInProgress = () => syncInProgress;
 window.updateSyncUI = updateSyncUI;
-
-// Debug-Funktionen
-window.firebaseDebug = {
-    getStatus: () => ({
-        isFirebaseAvailable,
-        syncInProgress,
-        lastSyncTime,
-        initializationAttempts,
-        firebaseApp,
-        firestore
-    }),
-    logs: () => console.log('Siehe Debug-Logs oben ⬆️'),
-    forceInit: () => initializeFirebase(),
-    testConnection: () => testFirestoreConnection()
-};
 
 // ========== AUTO-START ==========
 if (document.readyState === 'loading') {
@@ -782,12 +726,11 @@ if (document.readyState === 'loading') {
     initializeCloudSync();
 }
 
-// Listen auf Firebase Ready Event
 window.addEventListener('firebaseReady', () => {
-    debugLog('🔥 Firebase Ready Event empfangen');
+    console.log('🔥 Firebase Ready Event empfangen');
     setTimeout(() => {
         checkCloudStatus();
     }, 1000);
 });
 
-debugLog('🔧 Firebase Cloud-Synchronisation (Debug-Version) geladen');
+console.log('🔥 Firebase Cloud-Synchronisation (Production) geladen');
