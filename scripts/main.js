@@ -3330,19 +3330,4 @@ window.onclick = function(event) {
     }
 }
 
-// Quick Fix: Cloud-Sync Toggle nach Dashboard-Load
-setTimeout(() => {
-    if (document.getElementById('manualSyncBtn') && !document.getElementById('cloudSyncToggle')) {
-        document.getElementById('manualSyncBtn').insertAdjacentHTML('afterend', `
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; border: 2px solid #ff6b35;">
-                <span style="font-size: 0.9rem; font-weight: bold; color: #ff6b35;">☁️</span>
-                <label class="toggle-switch" style="width: 50px; height: 28px;">
-                    <input type="checkbox" id="cloudSyncToggle" onchange="toggleCloudSync()" checked>
-                    <span class="toggle-slider" style="border-radius: 28px;"></span>
-                </label>
-            </div>
-        `);
-    }
-}, 2000);
-
 console.log('🚀 KlarKRAFT Shop loaded successfully (clean version)!');
