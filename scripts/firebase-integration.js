@@ -1,20 +1,34 @@
-// ========== KLARKRAFT FIREBASE CLOUD SYNCHRONISATION (PRODUCTION) ==========
-// Vollständige Cloud-Synchronisation mit allen Features
+// ========== KLARKRAFT FIREBASE CLOUD SYNCHRONISATION MIT TOGGLE ==========
+// Vollständige Cloud-Synchronisation mit On/Off-Schalter
 
-// ========== FIREBASE INITIALIZATION ==========
+// ========== CONFIGURATION ==========
 let firebaseApp = null;
 let firestore = null;
 let isFirebaseAvailable = false;
+let isCloudSyncEnabled = true; // Neuer Toggle-State
 let lastSyncTime = null;
 let syncInProgress = false;
 let autoSyncInterval = null;
 let initializationAttempts = 0;
 const MAX_INIT_ATTEMPTS = 3;
 
-// Firebase initialisieren
+// Cloud-Sync-Einstellungen laden
+function loadCloudSyncSettings() {
+    const savedSetting = localStorage.getItem('klarkraft_cloud_sync_enabled');
+    isCloudSyncEnabled = savedSetting !== 'false'; // Default: enabled
+    console.log('📁 Cloud-Sync Einstellung geladen:', isCloudSyncEnabled ? 'EIN' : 'AUS');
+}
+
+// Cloud-Sync-Einstellungen speichern
+function saveCloudSyncSettings() {
+    localStorage.setItem('klarkraft_cloud_sync_enabled', isCloudSyncEnabled.toString());
+    console.log('💾 Cloud-Sync Einstellung gespeichert:', isCloudSyncEnabled ? 'EIN' : 'AUS');
+}
+
+// ========== FIREBASE INITIALIZATION ==========
 async function initializeFirebase() {
     initializationAttempts++;
-    console.log(`🔥 Firebase Initialisierung Versuch ${initializationAttempts}/${MAX_INIT_ATTEMPTS}`);
+    console.log(`🔥 Firebase Init Versuch ${initializationAttempts}/${MAX_INIT_ATTEMPTS}`);
     
     try {
         if (!window.firebaseApp) {
@@ -24,7 +38,7 @@ async function initializeFirebase() {
         firebaseApp = window.firebaseApp;
         console.log('✅ Firebase App gefunden');
         
-        // Firestore importieren und initialisieren
+        // Firestore importieren
         const { getFirestore } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
         firestore = getFirestore(firebaseApp);
         
@@ -34,16 +48,21 @@ async function initializeFirebase() {
         isFirebaseAvailable = true;
         console.log('🎉 Firebase Firestore erfolgreich initialisiert');
         
-        updateSyncStatus('available', 'Cloud-Synchronisation bereit');
-        startAutoSync();
+        // Status-Update mit korrekter Cloud-Sync-Berücksichtigung
+        updateSyncStatus();
         
-        // Initial-Sync nach kurzer Verzögerung
-        setTimeout(() => {
-            if (window.currentMaster) {
-                console.log('👔 Master erkannt - starte Initial-Sync');
-                manualSync();
-            }
-        }, 3000);
+        // Auto-Sync nur starten wenn enabled
+        if (isCloudSyncEnabled) {
+            startAutoSync();
+            
+            // Initial-Sync nach kurzer Verzögerung
+            setTimeout(() => {
+                if (window.currentMaster) {
+                    console.log('👔 Master erkannt - starte Initial-Sync');
+                    manualSync();
+                }
+            }, 3000);
+        }
         
         return true;
         
@@ -65,7 +84,6 @@ async function initializeFirebase() {
     }
 }
 
-// Teste Firestore-Verbindung
 async function testFirestoreConnection() {
     try {
         const { doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
@@ -90,7 +108,34 @@ async function testFirestoreConnection() {
 }
 
 // ========== SYNC STATUS MANAGEMENT ==========
-function updateSyncStatus(status, message, lastSync = null) {
+function updateSyncStatus(statusOverride = null, messageOverride = null, lastSync = null, syncStats = null) {
+    let status, message;
+    
+    if (statusOverride && messageOverride) {
+        status = statusOverride;
+        message = messageOverride;
+    } else {
+        // Automatische Status-Bestimmung
+        if (!isFirebaseAvailable) {
+            status = 'offline';
+            message = 'Firebase nicht verfügbar';
+        } else if (!isCloudSyncEnabled) {
+            status = 'disabled';
+            message = 'Cloud-Sync deaktiviert';
+        } else if (syncInProgress) {
+            status = 'syncing';
+            message = 'Synchronisation läuft...';
+        } else {
+            status = 'available';
+            message = 'Cloud-Sync bereit';
+        }
+    }
+    
+    // Sync-Statistiken hinzufügen wenn vorhanden
+    if (syncStats && (syncStats.uploaded > 0 || syncStats.downloaded > 0)) {
+        message += ` (↑${syncStats.uploaded} ↓${syncStats.downloaded})`;
+    }
+    
     console.log(`📊 Sync Status: ${status} - ${message}`);
     
     const statusElement = document.getElementById('cloudStatusText');
@@ -107,6 +152,10 @@ function updateSyncStatus(status, message, lastSync = null) {
                 statusElement.textContent = '🔄 Synchronisiert...';
                 statusElement.style.color = '#ff9800';
                 break;
+            case 'disabled':
+                statusElement.textContent = '⏸️ Deaktiviert';
+                statusElement.style.color = '#9e9e9e';
+                break;
             case 'error':
                 statusElement.textContent = '⚠️ Fehler';
                 statusElement.style.color = '#f44336';
@@ -119,6 +168,12 @@ function updateSyncStatus(status, message, lastSync = null) {
                 statusElement.textContent = '🔍 Wird geprüft...';
                 statusElement.style.color = '#2196f3';
                 break;
+        }
+        
+        // Sync-Statistiken in separatem Element anzeigen
+        if (syncStats && (syncStats.uploaded > 0 || syncStats.downloaded > 0)) {
+            const statsText = ` ↑${syncStats.uploaded} ↓${syncStats.downloaded}`;
+            statusElement.textContent += statsText;
         }
     }
     
@@ -138,6 +193,69 @@ function updateSyncStatus(status, message, lastSync = null) {
     }
     
     updateSyncUI();
+}
+
+// ========== CLOUD SYNC TOGGLE FUNCTIONS ==========
+function toggleCloudSync() {
+    isCloudSyncEnabled = !isCloudSyncEnabled;
+    saveCloudSyncSettings();
+    
+    console.log('🔄 Cloud-Sync Toggle:', isCloudSyncEnabled ? 'AKTIVIERT' : 'DEAKTIVIERT');
+    
+    if (isCloudSyncEnabled) {
+        // Cloud-Sync aktivieren
+        if (isFirebaseAvailable) {
+            startAutoSync();
+            updateSyncStatus('available', 'Cloud-Sync aktiviert');
+            
+            // Sofortige Sync-Durchführung
+            setTimeout(() => {
+                manualSync();
+            }, 1000);
+        } else {
+            updateSyncStatus('offline', 'Firebase nicht verfügbar');
+        }
+        
+        if (window.showNotification) {
+            window.showNotification('✅ Cloud-Synchronisation aktiviert!', 'success');
+        }
+    } else {
+        // Cloud-Sync deaktivieren
+        stopAutoSync();
+        updateSyncStatus('disabled', 'Cloud-Sync deaktiviert');
+        
+        if (window.showNotification) {
+            window.showNotification('⏸️ Cloud-Synchronisation deaktiviert - Daten bleiben lokal', 'info');
+        }
+    }
+    
+    updateCloudSyncToggleUI();
+    
+    // Log für Aktivitäten
+    if (window.logActivity) {
+        window.logActivity('Cloud Sync Toggle', `Cloud-Sync ${isCloudSyncEnabled ? 'aktiviert' : 'deaktiviert'}`);
+    }
+}
+
+function updateCloudSyncToggleUI() {
+    const toggle = document.getElementById('cloudSyncToggle');
+    const status = document.getElementById('cloudSyncStatus');
+    
+    if (toggle) {
+        toggle.checked = isCloudSyncEnabled;
+    }
+    
+    if (status) {
+        if (isCloudSyncEnabled) {
+            status.textContent = '☁️ Cloud-Sync EIN - Automatische Synchronisation aktiv';
+            status.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+            status.style.color = '#4caf50';
+        } else {
+            status.textContent = '⏸️ Cloud-Sync AUS - Nur lokale Datenspeicherung';
+            status.style.backgroundColor = 'rgba(158, 158, 158, 0.2)';
+            status.style.color = '#9e9e9e';
+        }
+    }
 }
 
 // ========== COLLECTION HELPERS ==========
@@ -167,7 +285,7 @@ class FirebaseCollection {
     }
     
     async getCloudData() {
-        if (!isFirebaseAvailable) return [];
+        if (!isFirebaseAvailable || !isCloudSyncEnabled) return [];
         
         try {
             const { collection, getDocs, query, orderBy } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
@@ -193,7 +311,7 @@ class FirebaseCollection {
     }
     
     async saveToCloud(docId, data) {
-        if (!isFirebaseAvailable) return false;
+        if (!isFirebaseAvailable || !isCloudSyncEnabled) return false;
         
         try {
             const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
@@ -217,7 +335,7 @@ class FirebaseCollection {
     }
     
     async batchSaveToCloud(dataArray) {
-        if (!isFirebaseAvailable || dataArray.length === 0) return false;
+        if (!isFirebaseAvailable || !isCloudSyncEnabled || dataArray.length === 0) return false;
         
         try {
             const { writeBatch, doc } = await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
@@ -280,8 +398,8 @@ class SyncManager {
             return false;
         }
         
-        if (!isFirebaseAvailable) {
-            console.log('⚠️ Firebase nicht verfügbar für Synchronisation');
+        if (!isFirebaseAvailable || !isCloudSyncEnabled) {
+            console.log('⚠️ Cloud-Sync nicht verfügbar oder deaktiviert');
             return false;
         }
         
@@ -333,7 +451,10 @@ class SyncManager {
             const totalDownloaded = Object.values(syncResults).reduce((sum, result) => sum + result.downloaded, 0);
             const totalErrors = Object.values(syncResults).reduce((sum, result) => sum + result.errors, 0);
             
-            updateSyncStatus('available', `Sync: ↑${totalUploaded} ↓${totalDownloaded} ${totalErrors ? '⚠️' + totalErrors : ''}`, now);
+            // Status mit Sync-Statistiken aktualisieren
+            const syncStats = { uploaded: totalUploaded, downloaded: totalDownloaded, errors: totalErrors };
+            updateSyncStatus('available', 'Cloud-Sync erfolgreich', now, syncStats);
+            
             console.log(`✅ Cloud-Sync abgeschlossen: ${totalUploaded}↑ ${totalDownloaded}↓ ${totalErrors}❌`);
             
             // UI aktualisieren
@@ -360,7 +481,6 @@ class SyncManager {
         const localData = collection.getLocalData();
         if (localData.length === 0) return 0;
         
-        // Filtere unsynchronisierte Daten
         const unsyncedData = localData.filter(item => {
             return !item.syncedAt || (item.lastModified && item.lastModified > item.syncedAt);
         });
@@ -378,7 +498,6 @@ class SyncManager {
                 await collection.batchSaveToCloud(batch);
                 uploadedCount += batch.length;
                 
-                // Lokale Daten als synchronisiert markieren
                 batch.forEach(item => {
                     const localIndex = localData.findIndex(localItem => 
                         collection.getDocumentId(localItem) === collection.getDocumentId(item)
@@ -411,11 +530,9 @@ class SyncManager {
                 );
                 
                 if (localIndex === -1) {
-                    // Neues Item aus Cloud
                     mergedData.push(cloudItem);
                     downloadedCount++;
                 } else {
-                    // Prüfe welche Version neuer ist
                     const localItem = mergedData[localIndex];
                     const cloudModified = new Date(cloudItem.lastModified || 0);
                     const localModified = new Date(localItem.lastModified || 0);
@@ -440,6 +557,7 @@ class SyncManager {
         try {
             const settings = {
                 demoMode: localStorage.getItem('klarkraft_demo_mode') === 'true',
+                cloudSyncEnabled: isCloudSyncEnabled,
                 lastSync: lastSyncTime,
                 version: '1.0.0',
                 syncedBy: window.currentMaster?.name || 'System',
@@ -471,13 +589,13 @@ function startAutoSync() {
         clearInterval(autoSyncInterval);
     }
     
-    if (!isFirebaseAvailable) {
-        console.log('⚠️ Auto-Sync nicht gestartet - Firebase nicht verfügbar');
+    if (!isFirebaseAvailable || !isCloudSyncEnabled) {
+        console.log('⚠️ Auto-Sync nicht gestartet - Firebase nicht verfügbar oder deaktiviert');
         return;
     }
     
     autoSyncInterval = setInterval(async () => {
-        if (isFirebaseAvailable && !syncInProgress) {
+        if (isFirebaseAvailable && isCloudSyncEnabled && !syncInProgress) {
             console.log('🔄 Automatische Cloud-Synchronisation...');
             await syncManager.fullSync();
         }
@@ -497,6 +615,14 @@ function stopAutoSync() {
 // ========== PUBLIC API ==========
 async function manualSync() {
     console.log('🔄 Manuelle Cloud-Synchronisation gestartet');
+    
+    if (!isCloudSyncEnabled) {
+        const message = 'Cloud-Sync ist deaktiviert. Bitte aktivieren Sie es in den Einstellungen.';
+        if (window.showNotification) {
+            window.showNotification(message, 'warning');
+        }
+        return false;
+    }
     
     if (!isFirebaseAvailable) {
         const message = 'Cloud nicht verfügbar. Internetverbindung prüfen!';
@@ -542,7 +668,7 @@ async function manualSync() {
 }
 
 function triggerAutoSyncOnChange(dataType) {
-    if (!isFirebaseAvailable || syncInProgress) return;
+    if (!isFirebaseAvailable || !isCloudSyncEnabled || syncInProgress) return;
     
     console.log(`🔄 Auto-Cloud-Sync getriggert durch ${dataType}-Änderung`);
     
@@ -550,7 +676,7 @@ function triggerAutoSyncOnChange(dataType) {
     window.autoSyncTimeout = setTimeout(async () => {
         console.log(`🔄 Auto-Cloud-Sync ausgeführt für ${dataType}`);
         await syncManager.fullSync();
-    }, 5000); // 5 Sekunden Verzögerung
+    }, 5000);
 }
 
 async function checkCloudStatus() {
@@ -563,19 +689,15 @@ async function checkCloudStatus() {
             return false;
         }
         
-        // Reset und neu initialisieren
         initializationAttempts = 0;
         const available = await initializeFirebase();
         
         if (available) {
-            updateSyncStatus('available', 'Cloud-Verbindung erfolgreich');
-            
             const lastSync = localStorage.getItem('klarkraft_last_sync');
             if (lastSync) {
                 lastSyncTime = lastSync;
-                updateSyncStatus('available', 'Cloud-Verbindung erfolgreich', lastSync);
             }
-            
+            updateSyncStatus(); // Automatische Status-Bestimmung
             return true;
         } else {
             updateSyncStatus('offline', 'Cloud-Verbindung fehlgeschlagen');
@@ -605,14 +727,19 @@ function updateSyncUI() {
     } else {
         if (syncBtn) {
             syncBtn.disabled = false;
-            syncBtn.textContent = '🔄 Cloud synchronisieren';
-            syncBtn.style.opacity = '1';
+            const btnText = isCloudSyncEnabled ? '🔄 Cloud synchronisieren' : '⏸️ Cloud-Sync deaktiviert';
+            syncBtn.textContent = btnText;
+            syncBtn.style.opacity = isCloudSyncEnabled ? '1' : '0.5';
+            syncBtn.disabled = !isCloudSyncEnabled;
         }
         
         if (syncProgress) {
             syncProgress.style.display = 'none';
         }
     }
+    
+    // Toggle UI aktualisieren
+    updateCloudSyncToggleUI();
 }
 
 // ========== NETWORK MONITORING ==========
@@ -620,12 +747,12 @@ function setupNetworkMonitoring() {
     window.addEventListener('online', async () => {
         console.log('🌐 Internetverbindung wiederhergestellt');
         if (window.showNotification) {
-            window.showNotification('🌐 Online - Cloud-Sync wird fortgesetzt', 'info');
+            window.showNotification('🌐 Online - Cloud-Sync verfügbar', 'info');
         }
         
         setTimeout(async () => {
             const available = await checkCloudStatus();
-            if (available) {
+            if (available && isCloudSyncEnabled) {
                 await manualSync();
             }
         }, 2000);
@@ -642,7 +769,6 @@ function setupNetworkMonitoring() {
 }
 
 // ========== FUNCTION OVERRIDES ==========
-// Erweitere bestehende Funktionen um Auto-Cloud-Sync
 const originalCompleteOrder = window.completeOrder;
 const originalUpdateOrderStatus = window.updateOrderStatus;
 const originalHandleRegister = window.handleRegister;
@@ -684,8 +810,11 @@ if (typeof window.logActivity === 'function') {
 async function initializeCloudSync() {
     console.log('🚀 Initialisiere Cloud-Synchronisation...');
     
+    // Einstellungen laden
+    loadCloudSyncSettings();
+    
     setupNetworkMonitoring();
-    updateSyncStatus('testing', 'Initialisierung...');
+    updateSyncStatus();
     
     // Warte auf Firebase
     let attempts = 0;
@@ -715,6 +844,7 @@ async function initializeCloudSync() {
 window.manualSync = manualSync;
 window.checkCloudStatus = checkCloudStatus;
 window.triggerAutoSyncOnChange = triggerAutoSyncOnChange;
+window.toggleCloudSync = toggleCloudSync;
 window.isFirebaseAvailable = () => isFirebaseAvailable;
 window.syncInProgress = () => syncInProgress;
 window.updateSyncUI = updateSyncUI;
@@ -733,4 +863,4 @@ window.addEventListener('firebaseReady', () => {
     }, 1000);
 });
 
-console.log('🔥 Firebase Cloud-Synchronisation (Production) geladen');
+console.log('🔥 Firebase Cloud-Synchronisation mit Toggle geladen');
