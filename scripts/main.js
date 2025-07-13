@@ -5,7 +5,7 @@
 const products = [
     {
         id: 1,
-        name: "KlarKraft Brett BASIS - Universal",
+        name: "Akkumulator BASIS - Universal",
         description: "Universelles KlarKraft Brett für alle Einkäufe mit neutraler Gravur. Ideal für den täglichen Gebrauch zur Harmonisierung aller Lebensmittel.",
         price: 189.99,
         image: "🪨",
@@ -14,7 +14,7 @@ const products = [
     },
     {
         id: 2,
-        name: "KlarKraft Brett ANIMALIS - Tierprodukte",
+        name: "Akkumulator ANIMALIS - Tierprodukte",
         description: "Spezialcodierung für Fleisch, Milch und Lederprodukte. Optimiert für tierische Erzeugnisse mit gezielter Energieharmonisierung.",
         price: 209.99,
         image: "🐄",
@@ -23,7 +23,7 @@ const products = [
     },
     {
         id: 3,
-        name: "KlarKraft Brett HERBA - Pflanzen & Kräuter",
+        name: "Akkumulator HERBA - Pflanzen & Kräuter",
         description: "Ideal für Obst, Gemüse und Heilpflanzen. Verstärkt die natürliche Lebensenergie pflanzlicher Produkte und deren Nährstoffgehalt.",
         price: 199.99,
         image: "🌿",
@@ -32,7 +32,7 @@ const products = [
     },
     {
         id: 4,
-        name: "KlarKraft Brett UMBRA - Schattengewächse",
+        name: "Akkumulator UMBRA - Schattengewächse",
         description: "Spezielles Energiefeld für Pilze und empfindliche Schattengewächse. Schonende Behandlung für besonders sensitive Produkte.",
         price: 219.99,
         image: "🍄",
@@ -41,7 +41,7 @@ const products = [
     },
     {
         id: 5,
-        name: "KlarKraft Brett MOBILO - Reise-/Taschenmodell",
+        name: "Akkumulator MOBILO - Reise-/Taschenmodell",
         description: "Kompakt und tragbar für unterwegs. Reduzierte Größe mit effizienter Energienutzung - weniger Ladezyklen erforderlich.",
         price: 149.99,
         image: "🎒",
@@ -50,7 +50,7 @@ const products = [
     },
     {
         id: 6,
-        name: "KlarKraft Brett CRYSTA - Schmuck & Steine",
+        name: "Akkumulator CRYSTA - Schmuck & Steine",
         description: "Speziell für Energetisierung von Edelsteinen, Ketten und Amuletten. Komplettes Set mit Zubehör für Schmuckpflege.",
         price: 279.99,
         image: "💎",
@@ -63,6 +63,7 @@ const products = [
         description: "Kraftvolle Ampullen mit energetisiertem Wasser zur Reinigung und Harmonisierung von Objekten und Räumen.",
         price: 49.99,
         image: "💧",
+        badge: "UNIVERSAL",
         details: "5 Ampullen à 10ml mit hochfrequent energetisiertem Wasser aus natürlichen Quellen. Das Wasser wurde unter Vollmondlicht mit einer Auswahl kraftvoller Kristalle (Bergkristall, Amethyst, Rosenquarz) energetisiert. Wenige Tropfen genügen, um Gegenstände, Räume oder sogar Lebensmittel von negativer Energie zu befreien. Anwendung: 2-3 Tropfen auf den Gegenstand geben oder in den Raum sprühen. Das Elixier wirkt sofort und hält bis zu 48 Stunden an. Hergestellt in einem speziellen Mondlicht-Ritual mit jahrhundertealten Techniken."
     },
     {
@@ -71,11 +72,12 @@ const products = [
         description: "Spezielle Mikrofasertücher mit eingewobenen Kristallpartikeln für die tägliche energetische Reinigung.",
         price: 39.99,
         image: "🧽",
+        badge: "UNIVERSAL",
         details: "Set aus 3 hochwertigen Mikrofaser-Reinigungstüchern mit eingewobenen Bergkristall-Partikeln. Diese speziellen Tücher sind ideal für die tägliche energetische Reinigung von Gegenständen, Bildschirmen, Oberflächen und sogar Lebensmitteln. Die Kristallpartikel neutralisieren negative Energien beim Reinigungsvorgang. Größe: 30x30cm pro Tuch. Waschbar bis 40°C ohne Weichspüler. Die Tücher behalten ihre energetischen Eigenschaften auch nach häufigem Waschen. Perfekt für Smartphone-Displays, Computer, Spiegel und alle glatten Oberflächen."
     },
     {
         id: 9,
-        name: "Kraftsteine Harmonisierung",
+        name: "Harmonisierte Kraftsteine",
         description: "Ausgewählte Edelsteine zur Neutralisierung von Elektrosmog und negativen Schwingungen im Wohn- und Arbeitsbereich.",
         price: 79.99,
         image: "🔮",
@@ -83,7 +85,7 @@ const products = [
     },
     {
         id: 10,
-        name: "Neutralisator Sticker",
+        name: "Neutralisator Patches",
         description: "Praktische selbstklebende Sticker gegen Strichcodestrahlung für direkte Anbringung auf allen Produkten.",
         price: 29.99,
         image: "🏷️",
