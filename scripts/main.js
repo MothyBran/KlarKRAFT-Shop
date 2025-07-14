@@ -5,7 +5,7 @@
 const products = [
     {
         id: 1,
-        name: "KlarKraft Brett BASIS - Universal",
+        name: "Akkumulator BASIS - Universal",
         description: "Universelles KlarKraft Brett für alle Einkäufe mit neutraler Gravur. Ideal für den täglichen Gebrauch zur Harmonisierung aller Lebensmittel.",
         price: 189.99,
         image: "🪨",
@@ -14,7 +14,7 @@ const products = [
     },
     {
         id: 2,
-        name: "KlarKraft Brett ANIMALIS - Tierprodukte",
+        name: "Akkumulator ANIMALIS - Tierprodukte",
         description: "Spezialcodierung für Fleisch, Milch und Lederprodukte. Optimiert für tierische Erzeugnisse mit gezielter Energieharmonisierung.",
         price: 209.99,
         image: "🐄",
@@ -23,7 +23,7 @@ const products = [
     },
     {
         id: 3,
-        name: "KlarKraft Brett HERBA - Pflanzen & Kräuter",
+        name: "Akkumulator HERBA - Pflanzen & Kräuter",
         description: "Ideal für Obst, Gemüse und Heilpflanzen. Verstärkt die natürliche Lebensenergie pflanzlicher Produkte und deren Nährstoffgehalt.",
         price: 199.99,
         image: "🌿",
@@ -32,7 +32,7 @@ const products = [
     },
     {
         id: 4,
-        name: "KlarKraft Brett UMBRA - Schattengewächse",
+        name: "Akkumulator UMBRA - Schattengewächse",
         description: "Spezielles Energiefeld für Pilze und empfindliche Schattengewächse. Schonende Behandlung für besonders sensitive Produkte.",
         price: 219.99,
         image: "🍄",
@@ -41,7 +41,7 @@ const products = [
     },
     {
         id: 5,
-        name: "KlarKraft Brett MOBILO - Reise-/Taschenmodell",
+        name: "Akkumulator MOBILO - Reise-/Taschenmodell",
         description: "Kompakt und tragbar für unterwegs. Reduzierte Größe mit effizienter Energienutzung - weniger Ladezyklen erforderlich.",
         price: 149.99,
         image: "🎒",
@@ -50,7 +50,7 @@ const products = [
     },
     {
         id: 6,
-        name: "KlarKraft Brett CRYSTA - Schmuck & Steine",
+        name: "Akkumulator CRYSTA - Schmuck & Steine",
         description: "Speziell für Energetisierung von Edelsteinen, Ketten und Amuletten. Komplettes Set mit Zubehör für Schmuckpflege.",
         price: 279.99,
         image: "💎",
@@ -63,6 +63,7 @@ const products = [
         description: "Kraftvolle Ampullen mit energetisiertem Wasser zur Reinigung und Harmonisierung von Objekten und Räumen.",
         price: 49.99,
         image: "💧",
+        badge: "UNIVERSAL",
         details: "5 Ampullen à 10ml mit hochfrequent energetisiertem Wasser aus natürlichen Quellen. Das Wasser wurde unter Vollmondlicht mit einer Auswahl kraftvoller Kristalle (Bergkristall, Amethyst, Rosenquarz) energetisiert. Wenige Tropfen genügen, um Gegenstände, Räume oder sogar Lebensmittel von negativer Energie zu befreien. Anwendung: 2-3 Tropfen auf den Gegenstand geben oder in den Raum sprühen. Das Elixier wirkt sofort und hält bis zu 48 Stunden an. Hergestellt in einem speziellen Mondlicht-Ritual mit jahrhundertealten Techniken."
     },
     {
@@ -71,11 +72,12 @@ const products = [
         description: "Spezielle Mikrofasertücher mit eingewobenen Kristallpartikeln für die tägliche energetische Reinigung.",
         price: 39.99,
         image: "🧽",
+        badge: "UNIVERSAL",
         details: "Set aus 3 hochwertigen Mikrofaser-Reinigungstüchern mit eingewobenen Bergkristall-Partikeln. Diese speziellen Tücher sind ideal für die tägliche energetische Reinigung von Gegenständen, Bildschirmen, Oberflächen und sogar Lebensmitteln. Die Kristallpartikel neutralisieren negative Energien beim Reinigungsvorgang. Größe: 30x30cm pro Tuch. Waschbar bis 40°C ohne Weichspüler. Die Tücher behalten ihre energetischen Eigenschaften auch nach häufigem Waschen. Perfekt für Smartphone-Displays, Computer, Spiegel und alle glatten Oberflächen."
     },
     {
         id: 9,
-        name: "Kraftsteine Harmonisierung",
+        name: "Harmonisierte Kraftsteine",
         description: "Ausgewählte Edelsteine zur Neutralisierung von Elektrosmog und negativen Schwingungen im Wohn- und Arbeitsbereich.",
         price: 79.99,
         image: "🔮",
@@ -83,7 +85,7 @@ const products = [
     },
     {
         id: 10,
-        name: "Neutralisator Sticker",
+        name: "Neutralisator Patches",
         description: "Praktische selbstklebende Sticker gegen Strichcodestrahlung für direkte Anbringung auf allen Produkten.",
         price: 29.99,
         image: "🏷️",
@@ -2311,7 +2313,7 @@ function loadMasterSettings() {
                 <div class="setting-description">
                     <div class="setting-title">Automatische Bestellabwicklung</div>
                     <div class="setting-subtitle">
-                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist. Bei "Aus" werden niemals automatische Updates durchgeführt.
+                        Wenn aktiviert, werden Bestellungen automatisch bearbeitet, aber NUR wenn kein Mitarbeiter angemeldet ist.
                     </div>
                 </div>
                 <label class="toggle-switch">
@@ -2322,17 +2324,39 @@ function loadMasterSettings() {
             <div id="demoModeStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold;"></div>
         </div>
         
+        <!-- Firebase Status -->
         <div style="margin-bottom: 2rem;">
-            <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-
-
-Synchronisation</h4>
+            <h4 style="color: #8d6e63; margin-bottom: 1rem;">☁️ Cloud-Synchronisation</h4>
             <div id="firebaseStatus" style="padding: 1rem; background: rgba(255,255,255,0.7); border-radius: 8px; margin-bottom: 1rem;">
-                <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">❌ Nicht verfügbar</span></div>
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">Status: <span id="cloudStatusText">Wird überprüft...</span></div>
                 <div style="font-size: 0.9rem; color: #666;">
-                    <div>Firebase: <span id="firebaseAvailable">❌</span></div>
+                    <div>Firebase: <span id="firebaseAvailable">❓</span></div>
                     <div>Letzte Sync: <span id="lastSyncTime">Nie</span></div>
                 </div>
-                <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem; margin-top: 0.5rem;">🔄 Manuell synchronisieren</button>
+                
+                <!-- Buttons mit Toggle -->
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    <button class="btn" onclick="manualSync()" style="width: auto; padding: 0.5rem 1rem;" id="manualSyncBtn">🔄 Manuell synchronisieren</button>
+                    <button class="btn" onclick="checkCloudStatus()" style="width: auto; padding: 0.5rem 1rem; background: #2196f3;">🔍 Status prüfen</button>
+                    
+                    <!-- Cloud-Sync Toggle direkt bei den Buttons -->
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem; background: rgba(255,107,53,0.1); border-radius: 8px; border: 2px solid #ff6b35;">
+                        <span style="font-size: 0.9rem; font-weight: bold; color: #ff6b35;">☁️ Cloud-Sync:</span>
+                        <label class="toggle-switch" style="width: 50px; height: 28px;">
+                            <input type="checkbox" id="cloudSyncToggle" onchange="toggleCloudSync()" checked>
+                            <span class="toggle-slider" style="border-radius: 28px;"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Status-Anzeige -->
+                <div id="cloudSyncStatus" style="margin-top: 0.5rem; padding: 0.5rem; border-radius: 5px; text-align: center; font-weight: bold; font-size: 0.9rem; background: rgba(76, 175, 80, 0.2); color: #4caf50;">
+                    ☁️ Cloud-Sync EIN - Automatische Synchronisation aktiv
+                </div>
+                
+                <div id="syncProgress" style="display: none; margin-top: 1rem; padding: 0.5rem; background: rgba(33,150,243,0.1); border-radius: 5px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: #2196f3;">🔄 Synchronisation läuft...</div>
+                </div>
             </div>
         </div>
         
@@ -2351,6 +2375,16 @@ Synchronisation</h4>
         </div>
     `;
     updateDemoModeUI();
+    
+    // Cloud-Sync UI aktualisieren nach dem HTML-Rendering
+    setTimeout(() => {
+        if (window.updateSyncUI) {
+            window.updateSyncUI();
+        }
+        if (window.updateCloudSyncToggleUI) {
+            window.updateCloudSyncToggleUI();
+        }
+    }, 100);
 }
 
 // Generate Activity Logs
