@@ -453,34 +453,7 @@
                     </div>
                     <div id="masterOrdersList"></div>
                 </div>
-
-<!-- In der index.html, im Master Dashboard, in der Orders Tab -->
-<div id="masterOrders" class="auth-form">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="color: #ff6b35;">📦 Bestellverwaltung</h3>
-        <div>
-            <!-- HIER die neuen Filter-Buttons HINZUFÜGEN: -->
-            <div class="assignment-filter-buttons" style="display: flex; gap: 0.5rem; margin-right: 1rem;">
-                <button class="btn filter-btn-mine" onclick="filterOrdersByAssignment('mine')" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;">👤 Meine</button>
-                <button class="btn filter-btn-others" onclick="filterOrdersByAssignment('others')" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;">👥 Andere</button>
-                <button class="btn filter-btn-unassigned" onclick="filterOrdersByAssignment('unassigned')" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;">📋 Frei</button>
-                <button class="btn filter-btn-all" onclick="filterOrdersByAssignment('all')" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;">📦 Alle</button>
-            </div>
-            <!-- Ende der neuen Filter-Buttons -->
-            
-            <select id="orderStatusFilter" style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
-                <option value="">Alle Status</option>
-                <option value="pending">In Bearbeitung</option>
-                <option value="processing">Wird versendet</option>
-                <option value="completed">Geliefert</option>
-                <option value="cancelled">Storniert</option>
-            </select>
-            <button class="btn" onclick="exportOrdersCSV()" style="width: auto; padding: 0.5rem 1rem;">📥 Export</button>
-        </div>
-    </div>
-    <div id="masterOrdersList"></div>
-</div>
-              
+                
                 <!-- Analytics Tab -->
                 <div id="masterAnalytics" class="auth-form">
                     <h3 style="color: #ff6b35; margin-bottom: 1rem;">📈 Verkaufsanalytik</h3>
