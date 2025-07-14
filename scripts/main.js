@@ -3364,6 +3364,382 @@ window.onclick = function(event) {
     }
 }
 
+// ========== ERWEITERTE MASTER BESTELLVERWALTUNG MIT MITARBEITER-HERVORHEBUNG ==========
+
+// Erweiterte loadMasterOrders Funktion mit Mitarbeiter-Hervorhebung
+function loadMasterOrders() {
+    const statusFilter = document.getElementById('orderStatusFilter');
+    
+    function renderOrders(orderList = orders) {
+        document.getElementById('masterOrdersList').innerHTML = `
+            <!-- Statistik-Header für Mitarbeiter-Übersicht -->
+            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+                <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 Mitarbeiter-Übersicht</h4>
+                ${generateMasterOrderStats(orderList)}
+            </div>
+            
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>Bestellung</th>
+                        <th>Kunde</th>
+                        <th>Artikel</th>
+                        <th>Gesamt</th>
+                        <th>Zahlung</th>
+                        <th>Status</th>
+                        <th>Mitarbeiter</th>
+                        <th>Datum</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orderList
+                        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                        .map(order => createEnhancedOrderRow(order))
+                        .join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    renderOrders();
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', (e) => {
+            const selectedStatus = e.target.value;
+            const filteredOrders = selectedStatus ? 
+                orders.filter(order => order.status === selectedStatus) : 
+                orders;
+            renderOrders(filteredOrders);
+        });
+    }
+}
+
+// Neue Funktion: Mitarbeiter-Statistiken generieren
+function generateMasterOrderStats(orderList) {
+    const myOrders = orderList.filter(order => isMyOrder(order));
+    const otherMasterOrders = orderList.filter(order => hasOtherMasterAssignment(order));
+    const unassignedOrders = orderList.filter(order => !hasAnyMasterAssignment(order));
+    
+    const myActiveOrders = myOrders.filter(order => 
+        ['pending', 'processing1', 'processing2'].includes(order.status)
+    );
+    
+    return `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div class="master-assignment-stat my-orders">
+                <div class="stat-icon">👤</div>
+                <div class="stat-number">${myOrders.length}</div>
+                <div class="stat-label">Meine Bestellungen</div>
+                <div class="stat-sublabel">${myActiveOrders.length} aktiv</div>
+            </div>
+            <div class="master-assignment-stat other-masters">
+                <div class="stat-icon">👥</div>
+                <div class="stat-number">${otherMasterOrders.length}</div>
+                <div class="stat-label">Andere Mitarbeiter</div>
+                <div class="stat-sublabel">${getUniqueMasterCount(otherMasterOrders)} Personen</div>
+            </div>
+            <div class="master-assignment-stat unassigned">
+                <div class="stat-icon">📋</div>
+                <div class="stat-number">${unassignedOrders.length}</div>
+                <div class="stat-label">Nicht zugewiesen</div>
+                <div class="stat-sublabel">Verfügbar</div>
+            </div>
+            <div class="master-assignment-stat total">
+                <div class="stat-icon">📦</div>
+                <div class="stat-number">${orderList.length}</div>
+                <div class="stat-label">Gesamt</div>
+                <div class="stat-sublabel">Alle Bestellungen</div>
+            </div>
+        </div>
+    `;
+}
+
+// Neue Funktion: Erweiterte Tabellenzeile mit Mitarbeiter-Hervorhebung
+function createEnhancedOrderRow(order) {
+    const hasCancellationRequest = hasActiveCancellationRequest(order);
+    const canPerformActions = canPerformOrderActions(order);
+    const assignmentInfo = getOrderAssignmentInfo(order);
+    const rowClass = getOrderRowClass(order);
+    
+    return `
+        <tr class="${rowClass}">
+            <td>
+                <div class="order-id-container">
+                    <strong>#${order.orderId}</strong>
+                    ${assignmentInfo.badge}
+                    <br>
+                    <small>📦 ${order.trackingNumber}</small>
+                    ${hasCancellationRequest ? `
+                        <br><span class="cancellation-indicator">⚠️ STORNIERUNG ANGEFRAGT</span>
+                    ` : ''}
+                </div>
+            </td>
+            <td>
+                <strong>${order.customerName}</strong><br>
+                <small>${order.customerEmail}</small>
+            </td>
+            <td>${order.items.length} Artikel</td>
+            <td>
+                <div><strong>€${order.total.toFixed(2)}</strong></div>
+                ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+            </td>
+            <td>${order.paymentMethod}</td>
+            <td>
+                <select class="status-select ${!canPerformActions ? 'select-disabled' : ''}" 
+                        onchange="${!canPerformActions ? 'showCancellationRequestError(); this.value=this.defaultValue' : `updateOrderStatus('${order.orderId}', this.value)`}" 
+                        value="${order.status}" 
+                        ${!canPerformActions ? 'style="background: #f0f0f0; cursor: not-allowed;" disabled' : ''}>
+                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
+                    <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung</option>
+                    <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet</option>
+                    <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Abgeschlossen</option>
+                    <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
+                </select>
+                ${hasCancellationRequest ? `
+                    <br><small style="color: #ff9800; font-weight: bold;">Stornierung angefragt!</small>
+                ` : ''}
+            </td>
+            <td>
+                <div class="master-assignment-info">
+                    ${assignmentInfo.details}
+                </div>
+            </td>
+            <td>
+                <div>${new Date(order.orderDate).toLocaleDateString('de-DE')}</div>
+                <small style="color: #8d6e63;">${new Date(order.orderDate).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</small>
+            </td>
+            <td>
+                <div class="order-actions">
+                    <button class="action-btn view" onclick="viewOrderDetailsInModal('${order.orderId}')" title="Details anzeigen">👁️</button>
+                    ${order.status !== 'cancelled' && order.status !== 'completed' ? 
+                        `<button class="action-btn delete ${!canPerformActions ? 'btn-disabled' : ''}" 
+                                onclick="${!canPerformActions ? 'showCancellationRequestError()' : `cancelOrderFromModal('${order.orderId}')`}" 
+                                title="${!canPerformActions ? 'Stornierungsanfrage aktiv' : 'Bestellung stornieren'}" 
+                                style="cursor: ${!canPerformActions ? 'not-allowed' : 'pointer'}; opacity: ${!canPerformActions ? '0.5' : '1'};">❌</button>` : 
+                        ''}
+                    ${getQuickActionButton(order)}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Neue Funktion: Prüft ob Bestellung dem aktuellen Mitarbeiter gehört
+function isMyOrder(order) {
+    if (!currentMaster) return false;
+    
+    return order.processedBy === currentMaster.name ||
+           order.assignedTo === currentMaster.name ||
+           order.statusUpdatedBy === currentMaster.name ||
+           order.cancelledBy === currentMaster.name;
+}
+
+// Neue Funktion: Prüft ob Bestellung einem anderen Mitarbeiter zugewiesen ist
+function hasOtherMasterAssignment(order) {
+    if (!currentMaster) return false;
+    
+    const assignedMasters = [
+        order.processedBy,
+        order.assignedTo,
+        order.statusUpdatedBy,
+        order.cancelledBy
+    ].filter(master => master && master !== currentMaster.name);
+    
+    return assignedMasters.length > 0;
+}
+
+// Neue Funktion: Prüft ob Bestellung überhaupt einem Mitarbeiter zugewiesen ist
+function hasAnyMasterAssignment(order) {
+    return order.processedBy || 
+           order.assignedTo || 
+           order.statusUpdatedBy || 
+           order.cancelledBy;
+}
+
+// Neue Funktion: Bestimmt CSS-Klasse für Tabellenzeile
+function getOrderRowClass(order) {
+    let classes = ['master-order-row'];
+    
+    if (isMyOrder(order)) {
+        classes.push('my-order');
+    } else if (hasOtherMasterAssignment(order)) {
+        classes.push('other-master-order');
+    } else {
+        classes.push('unassigned-order');
+    }
+    
+    // Status-spezifische Klassen
+    if (hasActiveCancellationRequest(order)) {
+        classes.push('has-cancellation-request');
+    }
+    
+    if (order.status === 'pending') {
+        classes.push('urgent-order');
+    }
+    
+    return classes.join(' ');
+}
+
+// Neue Funktion: Generiert Zuweisungsinformationen
+function getOrderAssignmentInfo(order) {
+    if (isMyOrder(order)) {
+        return {
+            badge: '<span class="assignment-badge my-assignment">👤 MEINE</span>',
+            details: `
+                <div class="my-assignment-details">
+                    <strong>👤 Meine Bestellung</strong>
+                    ${order.processedBy === currentMaster.name ? '<br><small>✅ Übernommen</small>' : ''}
+                    ${order.statusUpdatedBy === currentMaster.name ? '<br><small>🔄 Letzte Änderung</small>' : ''}
+                </div>
+            `
+        };
+    } else if (hasOtherMasterAssignment(order)) {
+        const assignedMaster = order.processedBy || order.assignedTo || order.statusUpdatedBy || order.cancelledBy;
+        return {
+            badge: '<span class="assignment-badge other-assignment">👥 ANDERE</span>',
+            details: `
+                <div class="other-assignment-details">
+                    <strong>👥 ${assignedMaster}</strong>
+                    ${order.processedBy ? '<br><small>⚙️ Bearbeiter</small>' : ''}
+                    ${order.statusUpdatedBy && order.statusUpdatedBy !== order.processedBy ? `<br><small>🔄 ${order.statusUpdatedBy}</small>` : ''}
+                </div>
+            `
+        };
+    } else {
+        return {
+            badge: '<span class="assignment-badge unassigned">📋 FREI</span>',
+            details: `
+                <div class="unassigned-details">
+                    <strong>📋 Nicht zugewiesen</strong>
+                    <br><small style="color: #4caf50;">✨ Verfügbar</small>
+                </div>
+            `
+        };
+    }
+}
+
+// Neue Funktion: Schnell-Aktions-Button basierend auf Zuordnung
+function getQuickActionButton(order) {
+    if (order.status === 'cancelled' || order.status === 'completed') {
+        return '';
+    }
+    
+    if (!canPerformOrderActions(order)) {
+        return `<button class="action-btn warning btn-disabled" disabled title="Stornierungsanfrage aktiv">⚠️</button>`;
+    }
+    
+    if (isMyOrder(order)) {
+        // Für meine Bestellungen - nächster Schritt
+        if (order.status === 'pending') {
+            return `<button class="action-btn approve" onclick="processOrder('${order.orderId}')" title="Bearbeitung starten">▶️</button>`;
+        } else if (order.status === 'processing1') {
+            return `<button class="action-btn edit" onclick="advanceToShipping('${order.orderId}')" title="Zum Versand">📦</button>`;
+        } else if (order.status === 'processing2') {
+            return `<button class="action-btn approve" onclick="markAsCompleted('${order.orderId}')" title="Als versendet markieren">🚚</button>`;
+        }
+    } else if (!hasAnyMasterAssignment(order)) {
+        // Für nicht zugewiesene Bestellungen - übernehmen
+        return `<button class="action-btn approve" onclick="processOrder('${order.orderId}')" title="Bestellung übernehmen">👤</button>`;
+    } else {
+        // Für andere Mitarbeiter-Bestellungen - nur anzeigen
+        return `<button class="action-btn view" onclick="viewOrderDetailsInModal('${order.orderId}')" title="Nur ansehen (andere Zuordnung)">👁️</button>`;
+    }
+    
+    return '';
+}
+
+// Neue Funktion: Anzahl eindeutiger Mitarbeiter ermitteln
+function getUniqueMasterCount(orderList) {
+    const masters = new Set();
+    orderList.forEach(order => {
+        if (order.processedBy) masters.add(order.processedBy);
+        if (order.assignedTo) masters.add(order.assignedTo);
+        if (order.statusUpdatedBy) masters.add(order.statusUpdatedBy);
+        if (order.cancelledBy) masters.add(order.cancelledBy);
+    });
+    
+    // Aktuellen Mitarbeiter ausschließen
+    if (currentMaster) {
+        masters.delete(currentMaster.name);
+    }
+    
+    return masters.size;
+}
+
+// Erweiterte Filter-Funktionen
+function filterOrdersByAssignment(assignment) {
+    const statusFilter = document.getElementById('orderStatusFilter');
+    let filteredOrders;
+    
+    switch(assignment) {
+        case 'mine':
+            filteredOrders = orders.filter(order => isMyOrder(order));
+            break;
+        case 'others':
+            filteredOrders = orders.filter(order => hasOtherMasterAssignment(order));
+            break;
+        case 'unassigned':
+            filteredOrders = orders.filter(order => !hasAnyMasterAssignment(order));
+            break;
+        default:
+            filteredOrders = orders;
+    }
+    
+    // Kombiniere mit Status-Filter wenn aktiv
+    if (statusFilter && statusFilter.value) {
+        filteredOrders = filteredOrders.filter(order => order.status === statusFilter.value);
+    }
+    
+    document.getElementById('masterOrdersList').innerHTML = `
+        <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+            <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 Gefilterte Ansicht</h4>
+            <p>Zeige: ${getFilterDescription(assignment)} (${filteredOrders.length} Bestellungen)</p>
+            <button class="btn" onclick="loadMasterOrders()" style="width: auto; padding: 0.5rem 1rem; margin-top: 0.5rem;">🔄 Alle anzeigen</button>
+        </div>
+        
+        <table class="master-table">
+            <thead>
+                <tr>
+                    <th>Bestellung</th>
+                    <th>Kunde</th>
+                    <th>Artikel</th>
+                    <th>Gesamt</th>
+                    <th>Zahlung</th>
+                    <th>Status</th>
+                    <th>Mitarbeiter</th>
+                    <th>Datum</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filteredOrders
+                    .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                    .map(order => createEnhancedOrderRow(order))
+                    .join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function getFilterDescription(assignment) {
+    switch(assignment) {
+        case 'mine': return '👤 Meine Bestellungen';
+        case 'others': return '👥 Bestellungen anderer Mitarbeiter';
+        case 'unassigned': return '📋 Nicht zugewiesene Bestellungen';
+        default: return '📦 Alle Bestellungen';
+    }
+}
+
+// Global verfügbare Funktionen
+window.isMyOrder = isMyOrder;
+window.hasOtherMasterAssignment = hasOtherMasterAssignment;
+window.hasAnyMasterAssignment = hasAnyMasterAssignment;
+window.filterOrdersByAssignment = filterOrdersByAssignment;
+window.loadMasterOrders = loadMasterOrders; // Überschreibt die ursprüngliche Funktion
+
+console.log('✅ Erweiterte Master-Bestellverwaltung mit Mitarbeiter-Hervorhebung geladen');
+    
 // Die enhanced-master-orders.js nach main.js laden
 <script src="scripts/enhanced-master-orders.js"></script>
 
