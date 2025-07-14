@@ -3504,47 +3504,255 @@ function safeGenerateMasterOrderStats(orderList) {
 }
 
 // Sichere Filter-Funktion
-function safeFilterOrdersByAssignment(assignment) {
+// Verbesserte Filter-Funktion die tatsächlich funktioniert
+function filterOrdersByAssignment(assignment) {
+    console.log('🔍 Filter aktiviert:', assignment);
+    
     try {
         if (!window.orders || !Array.isArray(window.orders)) {
             console.warn('Keine Orders verfügbar');
+            if (window.showNotification) {
+                window.showNotification('❌ Keine Bestellungen verfügbar', 'error');
+            }
             return;
         }
         
         let filteredOrders;
+        let filterDescription;
         
         switch(assignment) {
             case 'mine':
                 filteredOrders = window.orders.filter(order => safeIsMyOrder(order));
+                filterDescription = `👤 Meine Bestellungen (${filteredOrders.length})`;
                 break;
             case 'others':
                 filteredOrders = window.orders.filter(order => safeHasOtherMasterAssignment(order));
+                filterDescription = `👥 Andere Mitarbeiter (${filteredOrders.length})`;
                 break;
             case 'unassigned':
                 filteredOrders = window.orders.filter(order => !safeHasAnyMasterAssignment(order));
+                filterDescription = `📋 Nicht zugewiesen (${filteredOrders.length})`;
                 break;
+            case 'all':
             default:
                 filteredOrders = window.orders;
+                filterDescription = `📦 Alle Bestellungen (${filteredOrders.length})`;
         }
         
-        console.log(`Gefiltert nach ${assignment}: ${filteredOrders.length} Bestellungen`);
+        console.log(`Gefiltert: ${filteredOrders.length} von ${window.orders.length} Bestellungen`);
         
-        // Rufe die originale loadMasterOrders auf falls vorhanden
-        if (typeof window.loadMasterOrders === 'function') {
-            // Temporär die gefilterte Liste setzen
-            const originalOrders = window.orders;
-            window.orders = filteredOrders;
-            window.loadMasterOrders();
-            window.orders = originalOrders;
+        // Direkt die Tabelle neu rendern
+        renderFilteredOrdersTable(filteredOrders, filterDescription, assignment);
+        
+        // Erfolgs-Benachrichtigung
+        if (window.showNotification) {
+            window.showNotification(`✅ ${filterDescription}`, 'success');
         }
         
     } catch (error) {
-        console.error('Fehler in safeFilterOrdersByAssignment:', error);
+        console.error('❌ Fehler beim Filtern:', error);
         if (window.showNotification) {
             window.showNotification('❌ Fehler beim Filtern der Bestellungen', 'error');
         }
     }
 }
+
+// Neue Funktion: Gefilterte Tabelle direkt rendern
+function renderFilteredOrdersTable(filteredOrders, filterDescription, activeFilter) {
+    const ordersList = document.getElementById('masterOrdersList');
+    if (!ordersList) {
+        console.error('masterOrdersList Element nicht gefunden');
+        return;
+    }
+    
+    try {
+        // Statistiken für gefilterte Liste
+        const statsHtml = safeGenerateMasterOrderStats(filteredOrders);
+        
+        // Filter-Info Header
+        const filterInfo = activeFilter === 'all' ? '' : `
+            <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(33,150,243,0.1); border-radius: 10px; border-left: 4px solid #2196f3;">
+                <h4 style="color: #2196f3; margin-bottom: 0.5rem;">🔍 Aktiver Filter</h4>
+                <p style="margin: 0; color: #5d4037;">${filterDescription}</p>
+                <button class="btn" onclick="filterOrdersByAssignment('all')" style="width: auto; padding: 0.4rem 0.8rem; margin-top: 0.5rem; font-size: 0.8rem;">🔄 Alle anzeigen</button>
+            </div>
+        `;
+        
+        // Tabelle generieren
+        const tableHtml = `
+            <table class="master-table">
+                <thead>
+                    <tr>
+                        <th>Bestellung</th>
+                        <th>Kunde</th>
+                        <th>Artikel</th>
+                        <th>Gesamt</th>
+                        <th>Zahlung</th>
+                        <th>Status</th>
+                        <th>Mitarbeiter</th>
+                        <th>Datum</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredOrders.length === 0 ? `
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 2rem; color: #8d6e63;">
+                                <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">📭</div>
+                                <div>Keine Bestellungen gefunden für: ${filterDescription}</div>
+                            </td>
+                        </tr>
+                    ` : filteredOrders
+                        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                        .map(order => createEnhancedOrderRow(order))
+                        .join('')}
+                </tbody>
+            </table>
+        `;
+        
+        // Alles zusammensetzen
+        ordersList.innerHTML = `
+            ${filterInfo}
+            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+                <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 ${activeFilter === 'all' ? 'Mitarbeiter-Übersicht' : 'Gefilterte Übersicht'}</h4>
+                ${statsHtml}
+            </div>
+            ${tableHtml}
+        `;
+        
+        console.log('✅ Tabelle erfolgreich gerendert');
+        
+    } catch (error) {
+        console.error('❌ Fehler beim Rendern der Tabelle:', error);
+        ordersList.innerHTML = '<p style="color: #f44336;">Fehler beim Laden der Bestellungen</p>';
+    }
+}
+
+// Neue Funktion: Erweiterte Tabellenzeile erstellen
+function createEnhancedOrderRow(order) {
+    try {
+        const hasCancellationRequest = window.hasActiveCancellationRequest ? window.hasActiveCancellationRequest(order) : false;
+        const canPerformActions = window.canPerformOrderActions ? window.canPerformOrderActions(order) : true;
+        const rowClass = safeGetOrderRowClass(order);
+        const badge = safeGetAssignmentBadge(order);
+        const assignmentInfo = getSimpleAssignmentInfo(order);
+        
+        return `
+            <tr class="${rowClass}">
+                <td>
+                    <div>
+                        <strong>#${order.orderId}</strong>
+                        ${badge}
+                        <br>
+                        <small>📦 ${order.trackingNumber || 'KK-' + Math.random().toString(36).substr(2, 6).toUpperCase()}</small>
+                        ${hasCancellationRequest ? `
+                            <br><span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">⚠️ STORNIERUNG</span>
+                        ` : ''}
+                    </div>
+                </td>
+                <td>
+                    <strong>${order.customerName}</strong><br>
+                    <small>${order.customerEmail}</small>
+                </td>
+                <td>${order.items ? order.items.length : 0} Artikel</td>
+                <td>
+                    <div><strong>€${order.total.toFixed(2)}</strong></div>
+                    ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
+                </td>
+                <td>${order.paymentMethod || 'Nicht angegeben'}</td>
+                <td>
+                    <select class="status-select ${!canPerformActions ? 'select-disabled' : ''}" 
+                            onchange="${!canPerformActions ? 'alert(\'Stornierungsanfrage aktiv\')' : `updateOrderStatus('${order.orderId}', this.value)`}" 
+                            ${!canPerformActions ? 'disabled' : ''}>
+                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
+                        <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung</option>
+                        <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet</option>
+                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Abgeschlossen</option>
+                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
+                    </select>
+                </td>
+                <td>
+                    <div style="font-size: 0.85rem;">
+                        ${assignmentInfo}
+                    </div>
+                </td>
+                <td>
+                    <div>${new Date(order.orderDate).toLocaleDateString('de-DE')}</div>
+                    <small style="color: #8d6e63;">${new Date(order.orderDate).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</small>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                        <button class="action-btn view" onclick="viewOrderDetailsInModal ? viewOrderDetailsInModal('${order.orderId}') : alert('Details für ${order.orderId}')" title="Details">👁️</button>
+                        ${getSimpleQuickActionButton(order, canPerformActions)}
+                    </div>
+                </td>
+            </tr>
+        `;
+    } catch (error) {
+        console.error('Fehler in createEnhancedOrderRow:', error);
+        return `<tr><td colspan="9">Fehler beim Laden der Bestellung</td></tr>`;
+    }
+}
+
+// Vereinfachte Zuweisungsinfo
+function getSimpleAssignmentInfo(order) {
+    if (safeIsMyOrder(order)) {
+        return `
+            <div style="color: #4caf50; background: rgba(76,175,80,0.1); padding: 0.3rem; border-radius: 4px;">
+                <strong>👤 Meine Bestellung</strong>
+                ${order.processedBy === window.currentMaster?.name ? '<br><small>✅ Übernommen</small>' : ''}
+            </div>
+        `;
+    } else if (safeHasOtherMasterAssignment(order)) {
+        const assignedMaster = order.processedBy || order.assignedTo || order.statusUpdatedBy || order.cancelledBy;
+        return `
+            <div style="color: #2196f3; background: rgba(33,150,243,0.1); padding: 0.3rem; border-radius: 4px;">
+                <strong>👥 ${assignedMaster}</strong>
+                <br><small>⚙️ Zugewiesen</small>
+            </div>
+        `;
+    } else {
+        return `
+            <div style="color: #ff9800; background: rgba(255,152,0,0.1); padding: 0.3rem; border-radius: 4px;">
+                <strong>📋 Nicht zugewiesen</strong>
+                <br><small style="color: #4caf50;">✨ Verfügbar</small>
+            </div>
+        `;
+    }
+}
+
+// Vereinfachte Aktions-Buttons
+function getSimpleQuickActionButton(order, canPerformActions) {
+    if (order.status === 'cancelled' || order.status === 'completed') {
+        return '';
+    }
+    
+    if (!canPerformActions) {
+        return `<button class="action-btn" style="background: #ff9800; cursor: not-allowed;" disabled title="Stornierungsanfrage aktiv">⚠️</button>`;
+    }
+    
+    if (safeIsMyOrder(order)) {
+        if (order.status === 'pending') {
+            return `<button class="action-btn" style="background: #4caf50;" onclick="processOrder ? processOrder('${order.orderId}') : alert('Bestellung ${order.orderId} übernehmen')" title="Bearbeitung starten">▶️</button>`;
+        } else if (order.status === 'processing1') {
+            return `<button class="action-btn" style="background: #2196f3;" onclick="advanceToShipping ? advanceToShipping('${order.orderId}') : alert('${order.orderId} zum Versand')" title="Zum Versand">📦</button>`;
+        } else if (order.status === 'processing2') {
+            return `<button class="action-btn" style="background: #4caf50;" onclick="markAsCompleted ? markAsCompleted('${order.orderId}') : alert('${order.orderId} als versendet markieren')" title="Als versendet markieren">🚚</button>`;
+        }
+    } else if (!safeHasAnyMasterAssignment(order)) {
+        return `<button class="action-btn" style="background: #4caf50;" onclick="processOrder ? processOrder('${order.orderId}') : alert('Bestellung ${order.orderId} übernehmen')" title="Bestellung übernehmen">👤</button>`;
+    } else {
+        return `<button class="action-btn view" onclick="viewOrderDetailsInModal ? viewOrderDetailsInModal('${order.orderId}') : alert('Details für ${order.orderId}')" title="Nur ansehen">👁️</button>`;
+    }
+    
+    return '';
+}
+
+// Überschreibe die globalen Funktionen
+window.filterOrdersByAssignment = filterOrdersByAssignment;
+window.safeFilterOrdersByAssignment = filterOrdersByAssignment; // Fallback
+
+console.log('✅ Funktionierende Filter-Funktionen geladen');
 
 // Erweitere die bestehende loadMasterOrders falls sie existiert
 function enhanceExistingLoadMasterOrders() {
