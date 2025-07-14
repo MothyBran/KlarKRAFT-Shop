@@ -2513,4 +2513,7 @@ html {
     contain: layout;
 }
 
+/* Die Styles aus enhanced-master-orders.css in main.css integrieren */
+@import url('styles/enhanced-master-orders.css');
+
 /* ========== ENDE DER CSS ========== */
