@@ -453,7 +453,14 @@
                     </div>
                     <div id="masterOrdersList"></div>
                 </div>
-                
+
+              <!-- Filter-Buttons in der Orders Tab hinzufügen -->
+<div class="assignment-filter-buttons">
+    <button class="btn filter-btn-mine" onclick="filterOrdersByAssignment('mine')">👤 Meine</button>
+    <button class="btn filter-btn-others" onclick="filterOrdersByAssignment('others')">👥 Andere</button>
+    <button class="btn filter-btn-unassigned" onclick="filterOrdersByAssignment('unassigned')">📋 Frei</button>
+    <button class="btn filter-btn-all" onclick="filterOrdersByAssignment('all')">📦 Alle</button>
+</div>
                 <!-- Analytics Tab -->
                 <div id="masterAnalytics" class="auth-form">
                     <h3 style="color: #ff6b35; margin-bottom: 1rem;">📈 Verkaufsanalytik</h3>
