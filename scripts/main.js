@@ -3364,4 +3364,7 @@ window.onclick = function(event) {
     }
 }
 
+// Die enhanced-master-orders.js nach main.js laden
+<script src="scripts/enhanced-master-orders.js"></script>
+
 console.log('🚀 KlarKRAFT Shop loaded successfully (clean version)!');
