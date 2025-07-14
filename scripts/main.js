@@ -3364,4 +3364,269 @@ window.onclick = function(event) {
     }
 }
 
+// ========== SICHERE JAVASCRIPT INTEGRATION FÜR MASTER BESTELLVERWALTUNG ==========
+// Füge diesen Code am ENDE der main.js hinzu
+
+// Warten bis alles geladen ist
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 Sichere Master Orders Integration gestartet');
+});
+
+// Sichere Helper-Funktionen
+function safeIsMyOrder(order) {
+    if (!window.currentMaster) return false;
+    
+    try {
+        return order.processedBy === window.currentMaster.name ||
+               order.assignedTo === window.currentMaster.name ||
+               order.statusUpdatedBy === window.currentMaster.name ||
+               order.cancelledBy === window.currentMaster.name;
+    } catch (error) {
+        console.error('Fehler in safeIsMyOrder:', error);
+        return false;
+    }
+}
+
+function safeHasOtherMasterAssignment(order) {
+    if (!window.currentMaster) return false;
+    
+    try {
+        const assignedMasters = [
+            order.processedBy,
+            order.assignedTo,
+            order.statusUpdatedBy,
+            order.cancelledBy
+        ].filter(master => master && master !== window.currentMaster.name);
+        
+        return assignedMasters.length > 0;
+    } catch (error) {
+        console.error('Fehler in safeHasOtherMasterAssignment:', error);
+        return false;
+    }
+}
+
+function safeHasAnyMasterAssignment(order) {
+    try {
+        return order.processedBy || 
+               order.assignedTo || 
+               order.statusUpdatedBy || 
+               order.cancelledBy;
+    } catch (error) {
+        console.error('Fehler in safeHasAnyMasterAssignment:', error);
+        return false;
+    }
+}
+
+// Sichere Badge-Generierung
+function safeGetAssignmentBadge(order) {
+    try {
+        if (safeIsMyOrder(order)) {
+            return '<span class="assignment-badge my-assignment">👤 MEINE</span>';
+        } else if (safeHasOtherMasterAssignment(order)) {
+            return '<span class="assignment-badge other-assignment">👥 ANDERE</span>';
+        } else {
+            return '<span class="assignment-badge unassigned">📋 FREI</span>';
+        }
+    } catch (error) {
+        console.error('Fehler in safeGetAssignmentBadge:', error);
+        return '';
+    }
+}
+
+// Sichere Row-Class-Bestimmung
+function safeGetOrderRowClass(order) {
+    try {
+        let classes = ['master-order-row'];
+        
+        if (safeIsMyOrder(order)) {
+            classes.push('my-order');
+        } else if (safeHasOtherMasterAssignment(order)) {
+            classes.push('other-master-order');
+        } else {
+            classes.push('unassigned-order');
+        }
+        
+        return classes.join(' ');
+    } catch (error) {
+        console.error('Fehler in safeGetOrderRowClass:', error);
+        return 'master-order-row';
+    }
+}
+
+// Sichere Statistik-Generierung
+function safeGenerateMasterOrderStats(orderList) {
+    try {
+        if (!Array.isArray(orderList)) {
+            console.warn('orderList ist kein Array');
+            return '<p>Keine Daten verfügbar</p>';
+        }
+        
+        const myOrders = orderList.filter(order => safeIsMyOrder(order));
+        const otherMasterOrders = orderList.filter(order => safeHasOtherMasterAssignment(order));
+        const unassignedOrders = orderList.filter(order => !safeHasAnyMasterAssignment(order));
+        
+        const myActiveOrders = myOrders.filter(order => 
+            ['pending', 'processing1', 'processing2'].includes(order.status)
+        );
+        
+        return `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                <div class="master-assignment-stat my-orders" onclick="safeFilterOrdersByAssignment('mine')">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">👤</div>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${myOrders.length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Meine Bestellungen</div>
+                    <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">${myActiveOrders.length} aktiv</div>
+                </div>
+                <div class="master-assignment-stat other-masters" onclick="safeFilterOrdersByAssignment('others')">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">👥</div>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${otherMasterOrders.length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Andere Mitarbeiter</div>
+                    <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Team</div>
+                </div>
+                <div class="master-assignment-stat unassigned" onclick="safeFilterOrdersByAssignment('unassigned')">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📋</div>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${unassignedOrders.length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Nicht zugewiesen</div>
+                    <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Verfügbar</div>
+                </div>
+                <div class="master-assignment-stat total" onclick="safeFilterOrdersByAssignment('all')">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📦</div>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${orderList.length}</div>
+                    <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Gesamt</div>
+                    <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Alle Bestellungen</div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Fehler in safeGenerateMasterOrderStats:', error);
+        return '<p>Fehler beim Laden der Statistiken</p>';
+    }
+}
+
+// Sichere Filter-Funktion
+function safeFilterOrdersByAssignment(assignment) {
+    try {
+        if (!window.orders || !Array.isArray(window.orders)) {
+            console.warn('Keine Orders verfügbar');
+            return;
+        }
+        
+        let filteredOrders;
+        
+        switch(assignment) {
+            case 'mine':
+                filteredOrders = window.orders.filter(order => safeIsMyOrder(order));
+                break;
+            case 'others':
+                filteredOrders = window.orders.filter(order => safeHasOtherMasterAssignment(order));
+                break;
+            case 'unassigned':
+                filteredOrders = window.orders.filter(order => !safeHasAnyMasterAssignment(order));
+                break;
+            default:
+                filteredOrders = window.orders;
+        }
+        
+        console.log(`Gefiltert nach ${assignment}: ${filteredOrders.length} Bestellungen`);
+        
+        // Rufe die originale loadMasterOrders auf falls vorhanden
+        if (typeof window.loadMasterOrders === 'function') {
+            // Temporär die gefilterte Liste setzen
+            const originalOrders = window.orders;
+            window.orders = filteredOrders;
+            window.loadMasterOrders();
+            window.orders = originalOrders;
+        }
+        
+    } catch (error) {
+        console.error('Fehler in safeFilterOrdersByAssignment:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Fehler beim Filtern der Bestellungen', 'error');
+        }
+    }
+}
+
+// Erweitere die bestehende loadMasterOrders falls sie existiert
+function enhanceExistingLoadMasterOrders() {
+    if (typeof window.loadMasterOrders === 'function') {
+        const originalLoadMasterOrders = window.loadMasterOrders;
+        
+        window.loadMasterOrders = function() {
+            try {
+                // Rufe die originale Funktion auf
+                originalLoadMasterOrders.call(this);
+                
+                // Füge die Statistiken hinzu
+                setTimeout(() => {
+                    const ordersList = document.getElementById('masterOrdersList');
+                    if (ordersList && window.orders) {
+                        const statsHtml = safeGenerateMasterOrderStats(window.orders);
+                        const existingContent = ordersList.innerHTML;
+                        
+                        ordersList.innerHTML = `
+                            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+                                <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 Mitarbeiter-Übersicht</h4>
+                                ${statsHtml}
+                            </div>
+                            ${existingContent}
+                        `;
+                        
+                        // Erweitere Tabellenzeilen
+                        enhanceTableRows();
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('Fehler in erweiterte loadMasterOrders:', error);
+                // Fallback zur originalen Funktion
+                originalLoadMasterOrders.call(this);
+            }
+        };
+        
+        console.log('✅ loadMasterOrders erfolgreich erweitert');
+    } else {
+        console.warn('⚠️ loadMasterOrders Funktion nicht gefunden');
+    }
+}
+
+// Erweitere Tabellenzeilen
+function enhanceTableRows() {
+    try {
+        const tableRows = document.querySelectorAll('.master-table tbody tr');
+        
+        tableRows.forEach((row, index) => {
+            if (window.orders && window.orders[index]) {
+                const order = window.orders[index];
+                const rowClass = safeGetOrderRowClass(order);
+                const badge = safeGetAssignmentBadge(order);
+                
+                // Füge CSS-Klasse hinzu
+                row.className = rowClass;
+                
+                // Füge Badge hinzu falls Bestellnummer vorhanden
+                const orderIdCell = row.querySelector('td:first-child strong');
+                if (orderIdCell && !orderIdCell.querySelector('.assignment-badge')) {
+                    orderIdCell.innerHTML += badge;
+                }
+            }
+        });
+        
+        console.log('✅ Tabellenzeilen erfolgreich erweitert');
+    } catch (error) {
+        console.error('Fehler in enhanceTableRows:', error);
+    }
+}
+
+// Global verfügbare Funktionen
+window.safeFilterOrdersByAssignment = safeFilterOrdersByAssignment;
+window.safeIsMyOrder = safeIsMyOrder;
+window.safeHasOtherMasterAssignment = safeHasOtherMasterAssignment;
+window.safeHasAnyMasterAssignment = safeHasAnyMasterAssignment;
+
+// Warte und erweitere die loadMasterOrders Funktion
+setTimeout(() => {
+    enhanceExistingLoadMasterOrders();
+}, 1000);
+
+console.log('✅ Sichere Master Orders Integration geladen');
 console.log('🚀 KlarKRAFT Shop loaded successfully (clean version)!');
