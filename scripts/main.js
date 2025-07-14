@@ -3504,44 +3504,200 @@ function safeGenerateMasterOrderStats(orderList) {
 }
 
 // Sichere Filter-Funktion
-// Verbesserte Filter-Funktion die tatsächlich funktioniert
-function filterOrdersByAssignment(assignment) {
-    console.log('🔍 Filter aktiviert:', assignment);
+// ========== DEBUG UND REPARATUR FÜR BESTELLUNGEN-ZUGRIFF ==========
+// Ersetze die filterOrdersByAssignment Funktion komplett mit diesem Code:
+
+// Debug-Funktion um herauszufinden wo die Bestellungen sind
+function debugOrdersAccess() {
+    console.log('🔍 Debugging Orders Access:');
+    console.log('window.orders:', window.orders);
+    console.log('orders (global):', typeof orders !== 'undefined' ? orders : 'nicht gefunden');
+    console.log('localStorage orders:', localStorage.getItem('klarkraft_orders'));
     
+    // Alle verfügbaren globalen Variablen mit "order" im Namen finden
+    const orderVariables = [];
+    for (let key in window) {
+        if (key.toLowerCase().includes('order')) {
+            orderVariables.push(key);
+        }
+    }
+    console.log('Verfügbare Order-Variablen:', orderVariables);
+    
+    return getOrdersFromAnySource();
+}
+
+// Robuste Funktion um Bestellungen aus verschiedenen Quellen zu holen
+function getOrdersFromAnySource() {
+    // Möglichkeit 1: window.orders
+    if (window.orders && Array.isArray(window.orders)) {
+        console.log('✅ Orders gefunden in: window.orders');
+        return window.orders;
+    }
+    
+    // Möglichkeit 2: globale orders Variable
+    if (typeof orders !== 'undefined' && Array.isArray(orders)) {
+        console.log('✅ Orders gefunden in: globale orders Variable');
+        return orders;
+    }
+    
+    // Möglichkeit 3: localStorage
     try {
-        if (!window.orders || !Array.isArray(window.orders)) {
-            console.warn('Keine Orders verfügbar');
-            if (window.showNotification) {
-                window.showNotification('❌ Keine Bestellungen verfügbar', 'error');
+        const localOrders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
+        if (Array.isArray(localOrders) && localOrders.length > 0) {
+            console.log('✅ Orders gefunden in: localStorage');
+            return localOrders;
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden aus localStorage:', error);
+    }
+    
+    // Möglichkeit 4: Aus bestehender Tabelle extrahieren
+    const ordersFromTable = extractOrdersFromTable();
+    if (ordersFromTable.length > 0) {
+        console.log('✅ Orders extrahiert aus: bestehende Tabelle');
+        return ordersFromTable;
+    }
+    
+    console.warn('❌ Keine Bestellungen gefunden in allen Quellen');
+    return [];
+}
+
+// Extrahiere Bestellungen aus der bestehenden Tabelle
+function extractOrdersFromTable() {
+    try {
+        const tableRows = document.querySelectorAll('.master-table tbody tr');
+        const extractedOrders = [];
+        
+        tableRows.forEach((row, index) => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 8) {
+                // Extrahiere Bestellnummer
+                const orderIdText = cells[0].textContent || '';
+                const orderIdMatch = orderIdText.match(/#(\w+)/);
+                const orderId = orderIdMatch ? orderIdMatch[1] : `EXTRACTED_${index}`;
+                
+                // Extrahiere Kundendaten
+                const customerText = cells[1].textContent || '';
+                const customerLines = customerText.split('\n').map(line => line.trim()).filter(line => line);
+                const customerName = customerLines[0] || 'Unbekannt';
+                const customerEmail = customerLines[1] || 'unbekannt@email.de';
+                
+                // Extrahiere weitere Daten
+                const itemsText = cells[2].textContent || '0 Artikel';
+                const itemsCount = parseInt(itemsText.match(/(\d+)/)?.[1] || '0');
+                
+                const totalText = cells[3].textContent || '€0.00';
+                const totalMatch = totalText.match(/€([\d,]+\.?\d*)/);
+                const total = totalMatch ? parseFloat(totalMatch[1].replace(',', '')) : 0;
+                
+                const paymentMethod = cells[4].textContent?.trim() || 'Unbekannt';
+                
+                const statusSelect = cells[5].querySelector('select');
+                const status = statusSelect ? statusSelect.value : 'pending';
+                
+                const dateText = cells[7].textContent || '';
+                const dateMatch = dateText.match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
+                const orderDate = dateMatch ? 
+                    new Date(dateMatch[1].split('.').reverse().join('-')).toISOString() : 
+                    new Date().toISOString();
+                
+                // Erstelle Mock-Bestellung
+                const mockOrder = {
+                    orderId: orderId,
+                    customerName: customerName,
+                    customerEmail: customerEmail,
+                    items: Array(itemsCount).fill({name: 'Produkt', quantity: 1, price: total/itemsCount}),
+                    total: total,
+                    paymentMethod: paymentMethod,
+                    status: status,
+                    orderDate: orderDate,
+                    trackingNumber: 'KK-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                    // Versuche Mitarbeiter-Zuordnung zu erkennen
+                    processedBy: extractMasterFromRow(cells[6]),
+                    assignedTo: null,
+                    statusUpdatedBy: null,
+                    cancelledBy: null
+                };
+                
+                extractedOrders.push(mockOrder);
             }
-            return;
+        });
+        
+        console.log(`📊 ${extractedOrders.length} Bestellungen aus Tabelle extrahiert`);
+        return extractedOrders;
+        
+    } catch (error) {
+        console.error('Fehler beim Extrahieren aus Tabelle:', error);
+        return [];
+    }
+}
+
+// Versuche Mitarbeiter aus Tabellenzelle zu extrahieren
+function extractMasterFromRow(cell) {
+    if (!cell) return null;
+    
+    const text = cell.textContent || '';
+    if (text.includes('Meine Bestellung') || text.includes('👤')) {
+        return window.currentMaster?.name || null;
+    }
+    
+    // Versuche Namen zu extrahieren
+    const nameMatch = text.match(/👥\s*([A-Za-zÄÖÜäöüß\s]+)/);
+    if (nameMatch) {
+        return nameMatch[1].trim();
+    }
+    
+    return null;
+}
+
+// Verbesserte Filter-Funktion
+function filterOrdersByAssignment(assignment) {
+    console.log('🔍 Filter gestartet:', assignment);
+    
+    // Debug und hole Bestellungen
+    const allOrders = debugOrdersAccess();
+    
+    if (!allOrders || allOrders.length === 0) {
+        console.warn('❌ Keine Bestellungen verfügbar');
+        
+        // Zeige hilfreiche Debug-Info
+        if (window.showNotification) {
+            window.showNotification(`🔍 Debug: Keine Bestellungen gefunden. Siehe Konsole für Details.`, 'warning');
         }
         
+        // Versuche die bestehende Tabelle zu filtern
+        filterExistingTable(assignment);
+        return;
+    }
+    
+    console.log(`📊 ${allOrders.length} Bestellungen gefunden`);
+    
+    try {
         let filteredOrders;
         let filterDescription;
         
         switch(assignment) {
             case 'mine':
-                filteredOrders = window.orders.filter(order => safeIsMyOrder(order));
+                filteredOrders = allOrders.filter(order => safeIsMyOrder(order));
                 filterDescription = `👤 Meine Bestellungen (${filteredOrders.length})`;
                 break;
             case 'others':
-                filteredOrders = window.orders.filter(order => safeHasOtherMasterAssignment(order));
+                filteredOrders = allOrders.filter(order => safeHasOtherMasterAssignment(order));
                 filterDescription = `👥 Andere Mitarbeiter (${filteredOrders.length})`;
                 break;
             case 'unassigned':
-                filteredOrders = window.orders.filter(order => !safeHasAnyMasterAssignment(order));
+                filteredOrders = allOrders.filter(order => !safeHasAnyMasterAssignment(order));
                 filterDescription = `📋 Nicht zugewiesen (${filteredOrders.length})`;
                 break;
             case 'all':
             default:
-                filteredOrders = window.orders;
+                filteredOrders = allOrders;
                 filterDescription = `📦 Alle Bestellungen (${filteredOrders.length})`;
         }
         
-        console.log(`Gefiltert: ${filteredOrders.length} von ${window.orders.length} Bestellungen`);
+        console.log(`✅ Gefiltert: ${filteredOrders.length} von ${allOrders.length} Bestellungen`);
         
-        // Direkt die Tabelle neu rendern
+        // Rendern
         renderFilteredOrdersTable(filteredOrders, filterDescription, assignment);
         
         // Erfolgs-Benachrichtigung
@@ -3552,289 +3708,104 @@ function filterOrdersByAssignment(assignment) {
     } catch (error) {
         console.error('❌ Fehler beim Filtern:', error);
         if (window.showNotification) {
-            window.showNotification('❌ Fehler beim Filtern der Bestellungen', 'error');
+            window.showNotification('❌ Fehler beim Filtern: ' + error.message, 'error');
         }
     }
 }
 
-// Neue Funktion: Gefilterte Tabelle direkt rendern
-function renderFilteredOrdersTable(filteredOrders, filterDescription, activeFilter) {
-    const ordersList = document.getElementById('masterOrdersList');
-    if (!ordersList) {
-        console.error('masterOrdersList Element nicht gefunden');
-        return;
-    }
+// Fallback: Filtere die bestehende Tabelle durch Verstecken/Zeigen von Zeilen
+function filterExistingTable(assignment) {
+    console.log('🔄 Fallback: Filtere bestehende Tabelle');
     
-    try {
-        // Statistiken für gefilterte Liste
-        const statsHtml = safeGenerateMasterOrderStats(filteredOrders);
-        
-        // Filter-Info Header
-        const filterInfo = activeFilter === 'all' ? '' : `
-            <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(33,150,243,0.1); border-radius: 10px; border-left: 4px solid #2196f3;">
-                <h4 style="color: #2196f3; margin-bottom: 0.5rem;">🔍 Aktiver Filter</h4>
-                <p style="margin: 0; color: #5d4037;">${filterDescription}</p>
-                <button class="btn" onclick="filterOrdersByAssignment('all')" style="width: auto; padding: 0.4rem 0.8rem; margin-top: 0.5rem; font-size: 0.8rem;">🔄 Alle anzeigen</button>
-            </div>
-        `;
-        
-        // Tabelle generieren
-        const tableHtml = `
-            <table class="master-table">
-                <thead>
-                    <tr>
-                        <th>Bestellung</th>
-                        <th>Kunde</th>
-                        <th>Artikel</th>
-                        <th>Gesamt</th>
-                        <th>Zahlung</th>
-                        <th>Status</th>
-                        <th>Mitarbeiter</th>
-                        <th>Datum</th>
-                        <th>Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${filteredOrders.length === 0 ? `
-                        <tr>
-                            <td colspan="9" style="text-align: center; padding: 2rem; color: #8d6e63;">
-                                <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">📭</div>
-                                <div>Keine Bestellungen gefunden für: ${filterDescription}</div>
-                            </td>
-                        </tr>
-                    ` : filteredOrders
-                        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
-                        .map(order => createEnhancedOrderRow(order))
-                        .join('')}
-                </tbody>
-            </table>
-        `;
-        
-        // Alles zusammensetzen
-        ordersList.innerHTML = `
-            ${filterInfo}
-            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
-                <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 ${activeFilter === 'all' ? 'Mitarbeiter-Übersicht' : 'Gefilterte Übersicht'}</h4>
-                ${statsHtml}
-            </div>
-            ${tableHtml}
-        `;
-        
-        console.log('✅ Tabelle erfolgreich gerendert');
-        
-    } catch (error) {
-        console.error('❌ Fehler beim Rendern der Tabelle:', error);
-        ordersList.innerHTML = '<p style="color: #f44336;">Fehler beim Laden der Bestellungen</p>';
-    }
-}
-
-// Neue Funktion: Erweiterte Tabellenzeile erstellen
-function createEnhancedOrderRow(order) {
-    try {
-        const hasCancellationRequest = window.hasActiveCancellationRequest ? window.hasActiveCancellationRequest(order) : false;
-        const canPerformActions = window.canPerformOrderActions ? window.canPerformOrderActions(order) : true;
-        const rowClass = safeGetOrderRowClass(order);
-        const badge = safeGetAssignmentBadge(order);
-        const assignmentInfo = getSimpleAssignmentInfo(order);
-        
-        return `
-            <tr class="${rowClass}">
-                <td>
-                    <div>
-                        <strong>#${order.orderId}</strong>
-                        ${badge}
-                        <br>
-                        <small>📦 ${order.trackingNumber || 'KK-' + Math.random().toString(36).substr(2, 6).toUpperCase()}</small>
-                        ${hasCancellationRequest ? `
-                            <br><span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">⚠️ STORNIERUNG</span>
-                        ` : ''}
-                    </div>
-                </td>
-                <td>
-                    <strong>${order.customerName}</strong><br>
-                    <small>${order.customerEmail}</small>
-                </td>
-                <td>${order.items ? order.items.length : 0} Artikel</td>
-                <td>
-                    <div><strong>€${order.total.toFixed(2)}</strong></div>
-                    ${order.shippingCost ? `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : `<small style="color: #4caf50;">versandkostenfrei</small>`}
-                </td>
-                <td>${order.paymentMethod || 'Nicht angegeben'}</td>
-                <td>
-                    <select class="status-select ${!canPerformActions ? 'select-disabled' : ''}" 
-                            onchange="${!canPerformActions ? 'alert(\'Stornierungsanfrage aktiv\')' : `updateOrderStatus('${order.orderId}', this.value)`}" 
-                            ${!canPerformActions ? 'disabled' : ''}>
-                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Ausstehend</option>
-                        <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>In Bearbeitung</option>
-                        <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>Wird versendet</option>
-                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Abgeschlossen</option>
-                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Storniert</option>
-                    </select>
-                </td>
-                <td>
-                    <div style="font-size: 0.85rem;">
-                        ${assignmentInfo}
-                    </div>
-                </td>
-                <td>
-                    <div>${new Date(order.orderDate).toLocaleDateString('de-DE')}</div>
-                    <small style="color: #8d6e63;">${new Date(order.orderDate).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</small>
-                </td>
-                <td>
-                    <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-                        <button class="action-btn view" onclick="viewOrderDetailsInModal ? viewOrderDetailsInModal('${order.orderId}') : alert('Details für ${order.orderId}')" title="Details">👁️</button>
-                        ${getSimpleQuickActionButton(order, canPerformActions)}
-                    </div>
-                </td>
-            </tr>
-        `;
-    } catch (error) {
-        console.error('Fehler in createEnhancedOrderRow:', error);
-        return `<tr><td colspan="9">Fehler beim Laden der Bestellung</td></tr>`;
-    }
-}
-
-// Vereinfachte Zuweisungsinfo
-function getSimpleAssignmentInfo(order) {
-    if (safeIsMyOrder(order)) {
-        return `
-            <div style="color: #4caf50; background: rgba(76,175,80,0.1); padding: 0.3rem; border-radius: 4px;">
-                <strong>👤 Meine Bestellung</strong>
-                ${order.processedBy === window.currentMaster?.name ? '<br><small>✅ Übernommen</small>' : ''}
-            </div>
-        `;
-    } else if (safeHasOtherMasterAssignment(order)) {
-        const assignedMaster = order.processedBy || order.assignedTo || order.statusUpdatedBy || order.cancelledBy;
-        return `
-            <div style="color: #2196f3; background: rgba(33,150,243,0.1); padding: 0.3rem; border-radius: 4px;">
-                <strong>👥 ${assignedMaster}</strong>
-                <br><small>⚙️ Zugewiesen</small>
-            </div>
-        `;
-    } else {
-        return `
-            <div style="color: #ff9800; background: rgba(255,152,0,0.1); padding: 0.3rem; border-radius: 4px;">
-                <strong>📋 Nicht zugewiesen</strong>
-                <br><small style="color: #4caf50;">✨ Verfügbar</small>
-            </div>
-        `;
-    }
-}
-
-// Vereinfachte Aktions-Buttons
-function getSimpleQuickActionButton(order, canPerformActions) {
-    if (order.status === 'cancelled' || order.status === 'completed') {
-        return '';
-    }
+    const tableRows = document.querySelectorAll('.master-table tbody tr');
+    let visibleCount = 0;
     
-    if (!canPerformActions) {
-        return `<button class="action-btn" style="background: #ff9800; cursor: not-allowed;" disabled title="Stornierungsanfrage aktiv">⚠️</button>`;
-    }
-    
-    if (safeIsMyOrder(order)) {
-        if (order.status === 'pending') {
-            return `<button class="action-btn" style="background: #4caf50;" onclick="processOrder ? processOrder('${order.orderId}') : alert('Bestellung ${order.orderId} übernehmen')" title="Bearbeitung starten">▶️</button>`;
-        } else if (order.status === 'processing1') {
-            return `<button class="action-btn" style="background: #2196f3;" onclick="advanceToShipping ? advanceToShipping('${order.orderId}') : alert('${order.orderId} zum Versand')" title="Zum Versand">📦</button>`;
-        } else if (order.status === 'processing2') {
-            return `<button class="action-btn" style="background: #4caf50;" onclick="markAsCompleted ? markAsCompleted('${order.orderId}') : alert('${order.orderId} als versendet markieren')" title="Als versendet markieren">🚚</button>`;
+    tableRows.forEach(row => {
+        const masterCell = row.querySelector('td:nth-child(7)'); // Mitarbeiter-Spalte
+        const shouldShow = shouldShowRowForFilter(row, masterCell, assignment);
+        
+        if (shouldShow) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
         }
-    } else if (!safeHasAnyMasterAssignment(order)) {
-        return `<button class="action-btn" style="background: #4caf50;" onclick="processOrder ? processOrder('${order.orderId}') : alert('Bestellung ${order.orderId} übernehmen')" title="Bestellung übernehmen">👤</button>`;
-    } else {
-        return `<button class="action-btn view" onclick="viewOrderDetailsInModal ? viewOrderDetailsInModal('${order.orderId}') : alert('Details für ${order.orderId}')" title="Nur ansehen">👁️</button>`;
-    }
+    });
     
-    return '';
+    // Filter-Info hinzufügen
+    addFilterInfoToTable(assignment, visibleCount, tableRows.length);
+    
+    console.log(`🎯 ${visibleCount} von ${tableRows.length} Zeilen angezeigt`);
+    
+    if (window.showNotification) {
+        window.showNotification(`🔍 Tabellen-Filter: ${visibleCount} Bestellungen`, 'info');
+    }
 }
 
-// Überschreibe die globalen Funktionen
+// Bestimme ob eine Tabellenzeile angezeigt werden soll
+function shouldShowRowForFilter(row, masterCell, assignment) {
+    if (!masterCell) return assignment === 'all';
+    
+    const text = masterCell.textContent || '';
+    
+    switch(assignment) {
+        case 'mine':
+            return text.includes('Meine Bestellung') || text.includes('👤');
+        case 'others':
+            return text.includes('👥') && !text.includes('Nicht zugewiesen');
+        case 'unassigned':
+            return text.includes('Nicht zugewiesen') || text.includes('📋');
+        case 'all':
+        default:
+            return true;
+    }
+}
+
+// Füge Filter-Info zur bestehenden Tabelle hinzu
+function addFilterInfoToTable(assignment, visibleCount, totalCount) {
+    // Entferne alte Filter-Info
+    const oldInfo = document.querySelector('.table-filter-info');
+    if (oldInfo) oldInfo.remove();
+    
+    if (assignment === 'all') return;
+    
+    const filterInfo = document.createElement('div');
+    filterInfo.className = 'table-filter-info';
+    filterInfo.style.cssText = `
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: rgba(33,150,243,0.1);
+        border-radius: 10px;
+        border-left: 4px solid #2196f3;
+    `;
+    
+    const filterNames = {
+        'mine': '👤 Meine Bestellungen',
+        'others': '👥 Andere Mitarbeiter',
+        'unassigned': '📋 Nicht zugewiesen'
+    };
+    
+    filterInfo.innerHTML = `
+        <h4 style="color: #2196f3; margin-bottom: 0.5rem;">🔍 Aktiver Tabellen-Filter</h4>
+        <p style="margin: 0; color: #5d4037;">${filterNames[assignment]} (${visibleCount} von ${totalCount})</p>
+        <button class="btn" onclick="filterOrdersByAssignment('all')" style="width: auto; padding: 0.4rem 0.8rem; margin-top: 0.5rem; font-size: 0.8rem;">🔄 Alle anzeigen</button>
+    `;
+    
+    const table = document.querySelector('.master-table');
+    if (table) {
+        table.parentNode.insertBefore(filterInfo, table);
+    }
+}
+
+// Globale Funktionen registrieren
 window.filterOrdersByAssignment = filterOrdersByAssignment;
-window.safeFilterOrdersByAssignment = filterOrdersByAssignment; // Fallback
+window.debugOrdersAccess = debugOrdersAccess;
+window.getOrdersFromAnySource = getOrdersFromAnySource;
 
-console.log('✅ Funktionierende Filter-Funktionen geladen');
+console.log('🔧 Debug und Reparatur für Orders-Zugriff geladen');
 
-// Erweitere die bestehende loadMasterOrders falls sie existiert
-function enhanceExistingLoadMasterOrders() {
-    if (typeof window.loadMasterOrders === 'function') {
-        const originalLoadMasterOrders = window.loadMasterOrders;
-        
-        window.loadMasterOrders = function() {
-            try {
-                // Rufe die originale Funktion auf
-                originalLoadMasterOrders.call(this);
-                
-                // Füge die Statistiken hinzu
-                setTimeout(() => {
-                    const ordersList = document.getElementById('masterOrdersList');
-                    if (ordersList && window.orders) {
-                        const statsHtml = safeGenerateMasterOrderStats(window.orders);
-                        const existingContent = ordersList.innerHTML;
-                        
-                        ordersList.innerHTML = `
-                            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
-                                <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 Mitarbeiter-Übersicht</h4>
-                                ${statsHtml}
-                            </div>
-                            ${existingContent}
-                        `;
-                        
-                        // Erweitere Tabellenzeilen
-                        enhanceTableRows();
-                    }
-                }, 100);
-                
-            } catch (error) {
-                console.error('Fehler in erweiterte loadMasterOrders:', error);
-                // Fallback zur originalen Funktion
-                originalLoadMasterOrders.call(this);
-            }
-        };
-        
-        console.log('✅ loadMasterOrders erfolgreich erweitert');
-    } else {
-        console.warn('⚠️ loadMasterOrders Funktion nicht gefunden');
-    }
-}
-
-// Erweitere Tabellenzeilen
-function enhanceTableRows() {
-    try {
-        const tableRows = document.querySelectorAll('.master-table tbody tr');
-        
-        tableRows.forEach((row, index) => {
-            if (window.orders && window.orders[index]) {
-                const order = window.orders[index];
-                const rowClass = safeGetOrderRowClass(order);
-                const badge = safeGetAssignmentBadge(order);
-                
-                // Füge CSS-Klasse hinzu
-                row.className = rowClass;
-                
-                // Füge Badge hinzu falls Bestellnummer vorhanden
-                const orderIdCell = row.querySelector('td:first-child strong');
-                if (orderIdCell && !orderIdCell.querySelector('.assignment-badge')) {
-                    orderIdCell.innerHTML += badge;
-                }
-            }
-        });
-        
-        console.log('✅ Tabellenzeilen erfolgreich erweitert');
-    } catch (error) {
-        console.error('Fehler in enhanceTableRows:', error);
-    }
-}
-
-// Global verfügbare Funktionen
-window.safeFilterOrdersByAssignment = safeFilterOrdersByAssignment;
-window.safeIsMyOrder = safeIsMyOrder;
-window.safeHasOtherMasterAssignment = safeHasOtherMasterAssignment;
-window.safeHasAnyMasterAssignment = safeHasAnyMasterAssignment;
-
-// Warte und erweitere die loadMasterOrders Funktion
+// Sofortiger Debug-Test
 setTimeout(() => {
-    enhanceExistingLoadMasterOrders();
+    console.log('🧪 Automatischer Debug-Test:');
+    debugOrdersAccess();
 }, 1000);
-
-console.log('✅ Sichere Master Orders Integration geladen');
-console.log('🚀 KlarKRAFT Shop loaded successfully (clean version)!');
