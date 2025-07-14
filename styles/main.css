@@ -2513,5 +2513,95 @@ html {
     contain: layout;
 }
 
+/* ========== SICHERE CSS INTEGRATION FÜR MASTER BESTELLVERWALTUNG ========== */
+/* Füge diesen Code am ENDE der main.css hinzu */
+
+/* Master Assignment Statistics */
+.master-assignment-stat {
+    background: linear-gradient(135deg, #fff, #f8f5f3);
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+    border: 2px solid #d7ccc8;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.master-assignment-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.master-assignment-stat.my-orders {
+    border-color: #4caf50;
+    background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(76,175,80,0.05));
+}
+
+.master-assignment-stat.other-masters {
+    border-color: #2196f3;
+    background: linear-gradient(135deg, rgba(33,150,243,0.1), rgba(33,150,243,0.05));
+}
+
+.master-assignment-stat.unassigned {
+    border-color: #ff9800;
+    background: linear-gradient(135deg, rgba(255,152,0,0.1), rgba(255,152,0,0.05));
+}
+
+.master-assignment-stat.total {
+    border-color: #9c27b0;
+    background: linear-gradient(135deg, rgba(156,39,176,0.1), rgba(156,39,176,0.05));
+}
+
+/* Order Row Styling */
+.master-order-row.my-order {
+    background: linear-gradient(135deg, rgba(76,175,80,0.08), rgba(76,175,80,0.03));
+    border-left: 4px solid #4caf50;
+}
+
+.master-order-row.other-master-order {
+    background: linear-gradient(135deg, rgba(33,150,243,0.08), rgba(33,150,243,0.03));
+    border-left: 4px solid #2196f3;
+}
+
+.master-order-row.unassigned-order {
+    background: linear-gradient(135deg, rgba(255,152,0,0.08), rgba(255,152,0,0.03));
+    border-left: 4px solid #ff9800;
+}
+
+/* Assignment Badges */
+.assignment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 0.5rem;
+    white-space: nowrap;
+}
+
+.assignment-badge.my-assignment {
+    background: linear-gradient(135deg, #4caf50, #66bb6a);
+    color: white;
+    box-shadow: 0 2px 4px rgba(76,175,80,0.3);
+}
+
+.assignment-badge.other-assignment {
+    background: linear-gradient(135deg, #2196f3, #42a5f5);
+    color: white;
+    box-shadow: 0 2px 4px rgba(33,150,243,0.3);
+}
+
+.assignment-badge.unassigned {
+    background: linear-gradient(135deg, #ff9800, #ffb74d);
+    color: white;
+    box-shadow: 0 2px 4px rgba(255,152,0,0.3);
+}
+
 /* ========== ENDE DER CSS ========== */
 
