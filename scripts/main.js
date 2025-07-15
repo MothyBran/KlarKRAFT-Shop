@@ -3909,6 +3909,9 @@ function updateFilterButtonStyling() {
 // ========== REPARATUR: STATISTIKEN IMMER MIT GESAMTZAHLEN ==========
 // Ersetze nur die applyAllFilters Funktion in main.js:
 
+// ========== REPARATUR: STATISTIKEN IMMER MIT GESAMTZAHLEN ==========
+// Ersetze nur die applyAllFilters Funktion in main.js:
+
 // Wende alle Filter gleichzeitig an
 function applyAllFilters() {
     if (!orders || !Array.isArray(orders)) {
@@ -4076,12 +4079,8 @@ function generateMasterOrderStats(orderList) {
     `;
 }
 
-// Globale Funktionen
-window.setAssignmentFilter = setAssignmentFilter;
-window.applyAllFilters = applyAllFilters;
-window.loadMasterOrders = loadMasterOrders; // Überschreibt die ursprüngliche Funktion
+// Globale Funktionen hinzufügen
+window.clearAllFilters = clearAllFilters;
 
-// Fallback für alte Filter-Funktion
-window.filterOrdersByAssignment = setAssignmentFilter;
+console.log('✅ Statistiken-Fix: Zeigen immer Gesamtzahlen, unabhängig von Filtern');
 
-console.log('✅ Einheitliches Filter-System geladen - Status und Mitarbeiter koordiniert');
