@@ -3908,6 +3908,12 @@ function updateFilterButtonStyling() {
 
 // Wende alle Filter gleichzeitig an
 function applyAllFilters() {
+
+// ========== REPARATUR: STATISTIKEN IMMER MIT GESAMTZAHLEN ==========
+// Ersetze nur die applyAllFilters Funktion in main.js:
+
+// Wende alle Filter gleichzeitig an
+function applyAllFilters() {
     if (!orders || !Array.isArray(orders)) {
         console.warn('Keine Orders zum Filtern verfügbar');
         return;
@@ -3938,16 +3944,145 @@ function applyAllFilters() {
         tableContainer.innerHTML = generateOrdersTable(filteredOrders);
     }
     
-    // Statistiken aktualisieren
-    const statsHtml = generateMasterOrderStats(filteredOrders);
+    // WICHTIG: Statistiken IMMER mit ALLEN Bestellungen generieren, nicht mit gefilterten!
+    const statsHtml = generateMasterOrderStats(orders); // ← Hier IMMER 'orders', nicht 'filteredOrders'!
     const statsContainer = document.querySelector('#masterOrdersList .master-assignment-stat')?.parentElement?.parentElement;
     if (statsContainer) {
+        // Zeige an ob Filter aktiv sind, aber behalte Gesamtzahlen bei
+        const filterInfo = getActiveFilterInfo(filteredOrders.length, orders.length);
+        
         statsContainer.innerHTML = `
-            <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 ${currentStatusFilter || currentAssignmentFilter !== 'all' ? 'Gefilterte' : 'Mitarbeiter'}-Übersicht</h4>
+            <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 Mitarbeiter-Übersicht (Gesamt)</h4>
+            ${filterInfo}
             ${statsHtml}
         `;
     }
 }
+
+// Neue Funktion: Info über aktive Filter ohne Zahlen zu ändern
+function getActiveFilterInfo(filteredCount, totalCount) {
+    const hasActiveFilters = currentStatusFilter || currentAssignmentFilter !== 'all';
+    
+    if (!hasActiveFilters) {
+        return ''; // Keine Filter aktiv
+    }
+    
+    const activeFilters = [];
+    if (currentStatusFilter) {
+        const statusNames = {
+            'pending': '⏳ Ausstehend',
+            'processing': '⚙️ In Bearbeitung',
+            'completed': '✅ Abgeschlossen',
+            'cancelled': '❌ Storniert'
+        };
+        activeFilters.push(statusNames[currentStatusFilter] || currentStatusFilter);
+    }
+    
+    if (currentAssignmentFilter !== 'all') {
+        const assignmentNames = {
+            'mine': '👤 Meine Bestellungen',
+            'others': '👥 Andere Mitarbeiter',
+            'unassigned': '📋 Nicht zugewiesen'
+        };
+        activeFilters.push(assignmentNames[currentAssignmentFilter] || currentAssignmentFilter);
+    }
+    
+    return `
+        <div style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(33,150,243,0.1); border-radius: 8px; border-left: 4px solid #2196f3;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <strong style="color: #2196f3; font-size: 0.9rem;">🔍 Aktive Filter:</strong>
+                    <span style="color: #5d4037; margin-left: 0.5rem;">${activeFilters.join(' + ')}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="color: #5d4037; font-size: 0.9rem;">
+                        <strong style="color: #ff6b35;">${filteredCount}</strong> von <strong>${totalCount}</strong> Bestellungen
+                    </span>
+                    <button class="btn" onclick="clearAllFilters()" 
+                            style="background: #9e9e9e; width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                        🔄 Filter zurücksetzen
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Neue Funktion: Alle Filter zurücksetzen
+function clearAllFilters() {
+    currentStatusFilter = '';
+    currentAssignmentFilter = 'all';
+    
+    // Status-Dropdown zurücksetzen
+    const statusSelect = document.getElementById('orderStatusFilter');
+    if (statusSelect) {
+        statusSelect.value = '';
+    }
+    
+    // Button-Styling aktualisieren
+    updateFilterButtonStyling();
+    
+    // Alle Filter anwenden (= keine Filter)
+    applyAllFilters();
+    
+    // Benachrichtigung
+    if (window.showNotification) {
+        window.showNotification('🔄 Alle Filter zurückgesetzt', 'info');
+    }
+}
+
+// Erweiterte Statistik-Generierung mit besserer Visualisierung
+function generateMasterOrderStats(orderList) {
+    if (!Array.isArray(orderList)) {
+        return '<p>Keine Daten verfügbar</p>';
+    }
+    
+    const myOrders = orderList.filter(order => getOrderAssignmentType(order) === 'mine');
+    const otherOrders = orderList.filter(order => getOrderAssignmentType(order) === 'others');
+    const unassignedOrders = orderList.filter(order => getOrderAssignmentType(order) === 'unassigned');
+    
+    const myActiveOrders = myOrders.filter(order => 
+        ['pending', 'processing1', 'processing2'].includes(order.status)
+    );
+    
+    return `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div class="master-assignment-stat my-orders ${currentAssignmentFilter === 'mine' ? 'stat-active' : ''}" onclick="setAssignmentFilter('mine')" style="cursor: pointer; position: relative;">
+                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">👤</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${myOrders.length}</div>
+                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Meine Bestellungen</div>
+                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">${myActiveOrders.length} aktiv</div>
+                ${currentAssignmentFilter === 'mine' ? '<div class="stat-active-indicator">🔍 AKTIVER FILTER</div>' : ''}
+            </div>
+            <div class="master-assignment-stat other-masters ${currentAssignmentFilter === 'others' ? 'stat-active' : ''}" onclick="setAssignmentFilter('others')" style="cursor: pointer; position: relative;">
+                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">👥</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${otherOrders.length}</div>
+                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Andere Mitarbeiter</div>
+                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Team</div>
+                ${currentAssignmentFilter === 'others' ? '<div class="stat-active-indicator">🔍 AKTIVER FILTER</div>' : ''}
+            </div>
+            <div class="master-assignment-stat unassigned ${currentAssignmentFilter === 'unassigned' ? 'stat-active' : ''}" onclick="setAssignmentFilter('unassigned')" style="cursor: pointer; position: relative;">
+                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">📋</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${unassignedOrders.length}</div>
+                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Nicht zugewiesen</div>
+                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Verfügbar</div>
+                ${currentAssignmentFilter === 'unassigned' ? '<div class="stat-active-indicator">🔍 AKTIVER FILTER</div>' : ''}
+            </div>
+            <div class="master-assignment-stat total ${currentAssignmentFilter === 'all' ? 'stat-active' : ''}" onclick="setAssignmentFilter('all')" style="cursor: pointer; position: relative;">
+                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">📦</div>
+                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${orderList.length}</div>
+                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Gesamt</div>
+                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Alle Bestellungen</div>
+                ${currentAssignmentFilter === 'all' ? '<div class="stat-active-indicator">🔍 AKTIVER FILTER</div>' : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Globale Funktionen hinzufügen
+window.clearAllFilters = clearAllFilters;
+
+console.log('✅ Statistiken-Fix: Zeigen immer Gesamtzahlen, unabhängig von Filtern');
 
 // Generiere Mitarbeiter-Statistiken
 function generateMasterOrderStats(orderList) {
