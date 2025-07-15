@@ -3507,305 +3507,270 @@ function safeGenerateMasterOrderStats(orderList) {
 // ========== DEBUG UND REPARATUR FÜR BESTELLUNGEN-ZUGRIFF ==========
 // Ersetze die filterOrdersByAssignment Funktion komplett mit diesem Code:
 
-// Debug-Funktion um herauszufinden wo die Bestellungen sind
-function debugOrdersAccess() {
-    console.log('🔍 Debugging Orders Access:');
-    console.log('window.orders:', window.orders);
-    console.log('orders (global):', typeof orders !== 'undefined' ? orders : 'nicht gefunden');
-    console.log('localStorage orders:', localStorage.getItem('klarkraft_orders'));
-    
-    // Alle verfügbaren globalen Variablen mit "order" im Namen finden
-    const orderVariables = [];
-    for (let key in window) {
-        if (key.toLowerCase().includes('order')) {
-            orderVariables.push(key);
-        }
-    }
-    console.log('Verfügbare Order-Variablen:', orderVariables);
-    
-    return getOrdersFromAnySource();
-}
+// ========== EINFACHE TABELLEN-FILTER - MOBILE FRIENDLY ==========
+// Ersetze die komplette filterOrdersByAssignment Funktion mit diesem Code:
 
-// Robuste Funktion um Bestellungen aus verschiedenen Quellen zu holen
-function getOrdersFromAnySource() {
-    // Möglichkeit 1: window.orders
-    if (window.orders && Array.isArray(window.orders)) {
-        console.log('✅ Orders gefunden in: window.orders');
-        return window.orders;
-    }
-    
-    // Möglichkeit 2: globale orders Variable
-    if (typeof orders !== 'undefined' && Array.isArray(orders)) {
-        console.log('✅ Orders gefunden in: globale orders Variable');
-        return orders;
-    }
-    
-    // Möglichkeit 3: localStorage
-    try {
-        const localOrders = JSON.parse(localStorage.getItem('klarkraft_orders') || '[]');
-        if (Array.isArray(localOrders) && localOrders.length > 0) {
-            console.log('✅ Orders gefunden in: localStorage');
-            return localOrders;
-        }
-    } catch (error) {
-        console.error('Fehler beim Laden aus localStorage:', error);
-    }
-    
-    // Möglichkeit 4: Aus bestehender Tabelle extrahieren
-    const ordersFromTable = extractOrdersFromTable();
-    if (ordersFromTable.length > 0) {
-        console.log('✅ Orders extrahiert aus: bestehende Tabelle');
-        return ordersFromTable;
-    }
-    
-    console.warn('❌ Keine Bestellungen gefunden in allen Quellen');
-    return [];
-}
-
-// Extrahiere Bestellungen aus der bestehenden Tabelle
-function extractOrdersFromTable() {
-    try {
-        const tableRows = document.querySelectorAll('.master-table tbody tr');
-        const extractedOrders = [];
-        
-        tableRows.forEach((row, index) => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length >= 8) {
-                // Extrahiere Bestellnummer
-                const orderIdText = cells[0].textContent || '';
-                const orderIdMatch = orderIdText.match(/#(\w+)/);
-                const orderId = orderIdMatch ? orderIdMatch[1] : `EXTRACTED_${index}`;
-                
-                // Extrahiere Kundendaten
-                const customerText = cells[1].textContent || '';
-                const customerLines = customerText.split('\n').map(line => line.trim()).filter(line => line);
-                const customerName = customerLines[0] || 'Unbekannt';
-                const customerEmail = customerLines[1] || 'unbekannt@email.de';
-                
-                // Extrahiere weitere Daten
-                const itemsText = cells[2].textContent || '0 Artikel';
-                const itemsCount = parseInt(itemsText.match(/(\d+)/)?.[1] || '0');
-                
-                const totalText = cells[3].textContent || '€0.00';
-                const totalMatch = totalText.match(/€([\d,]+\.?\d*)/);
-                const total = totalMatch ? parseFloat(totalMatch[1].replace(',', '')) : 0;
-                
-                const paymentMethod = cells[4].textContent?.trim() || 'Unbekannt';
-                
-                const statusSelect = cells[5].querySelector('select');
-                const status = statusSelect ? statusSelect.value : 'pending';
-                
-                const dateText = cells[7].textContent || '';
-                const dateMatch = dateText.match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
-                const orderDate = dateMatch ? 
-                    new Date(dateMatch[1].split('.').reverse().join('-')).toISOString() : 
-                    new Date().toISOString();
-                
-                // Erstelle Mock-Bestellung
-                const mockOrder = {
-                    orderId: orderId,
-                    customerName: customerName,
-                    customerEmail: customerEmail,
-                    items: Array(itemsCount).fill({name: 'Produkt', quantity: 1, price: total/itemsCount}),
-                    total: total,
-                    paymentMethod: paymentMethod,
-                    status: status,
-                    orderDate: orderDate,
-                    trackingNumber: 'KK-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
-                    // Versuche Mitarbeiter-Zuordnung zu erkennen
-                    processedBy: extractMasterFromRow(cells[6]),
-                    assignedTo: null,
-                    statusUpdatedBy: null,
-                    cancelledBy: null
-                };
-                
-                extractedOrders.push(mockOrder);
-            }
-        });
-        
-        console.log(`📊 ${extractedOrders.length} Bestellungen aus Tabelle extrahiert`);
-        return extractedOrders;
-        
-    } catch (error) {
-        console.error('Fehler beim Extrahieren aus Tabelle:', error);
-        return [];
-    }
-}
-
-// Versuche Mitarbeiter aus Tabellenzelle zu extrahieren
-function extractMasterFromRow(cell) {
-    if (!cell) return null;
-    
-    const text = cell.textContent || '';
-    if (text.includes('Meine Bestellung') || text.includes('👤')) {
-        return window.currentMaster?.name || null;
-    }
-    
-    // Versuche Namen zu extrahieren
-    const nameMatch = text.match(/👥\s*([A-Za-zÄÖÜäöüß\s]+)/);
-    if (nameMatch) {
-        return nameMatch[1].trim();
-    }
-    
-    return null;
-}
-
-// Verbesserte Filter-Funktion
+// Super einfache Filter-Funktion die nur die Tabelle verwendet
 function filterOrdersByAssignment(assignment) {
-    console.log('🔍 Filter gestartet:', assignment);
+    // Sofortige Benachrichtigung
+    if (window.showNotification) {
+        window.showNotification(`🔍 Filtere nach: ${getFilterName(assignment)}`, 'info');
+    }
     
-    // Debug und hole Bestellungen
-    const allOrders = debugOrdersAccess();
-    
-    if (!allOrders || allOrders.length === 0) {
-        console.warn('❌ Keine Bestellungen verfügbar');
-        
-        // Zeige hilfreiche Debug-Info
+    // Finde die Tabelle
+    const table = document.querySelector('.master-table tbody');
+    if (!table) {
         if (window.showNotification) {
-            window.showNotification(`🔍 Debug: Keine Bestellungen gefunden. Siehe Konsole für Details.`, 'warning');
+            window.showNotification('❌ Tabelle nicht gefunden', 'error');
         }
-        
-        // Versuche die bestehende Tabelle zu filtern
-        filterExistingTable(assignment);
         return;
     }
     
-    console.log(`📊 ${allOrders.length} Bestellungen gefunden`);
-    
-    try {
-        let filteredOrders;
-        let filterDescription;
-        
-        switch(assignment) {
-            case 'mine':
-                filteredOrders = allOrders.filter(order => safeIsMyOrder(order));
-                filterDescription = `👤 Meine Bestellungen (${filteredOrders.length})`;
-                break;
-            case 'others':
-                filteredOrders = allOrders.filter(order => safeHasOtherMasterAssignment(order));
-                filterDescription = `👥 Andere Mitarbeiter (${filteredOrders.length})`;
-                break;
-            case 'unassigned':
-                filteredOrders = allOrders.filter(order => !safeHasAnyMasterAssignment(order));
-                filterDescription = `📋 Nicht zugewiesen (${filteredOrders.length})`;
-                break;
-            case 'all':
-            default:
-                filteredOrders = allOrders;
-                filterDescription = `📦 Alle Bestellungen (${filteredOrders.length})`;
-        }
-        
-        console.log(`✅ Gefiltert: ${filteredOrders.length} von ${allOrders.length} Bestellungen`);
-        
-        // Rendern
-        renderFilteredOrdersTable(filteredOrders, filterDescription, assignment);
-        
-        // Erfolgs-Benachrichtigung
-        if (window.showNotification) {
-            window.showNotification(`✅ ${filterDescription}`, 'success');
-        }
-        
-    } catch (error) {
-        console.error('❌ Fehler beim Filtern:', error);
-        if (window.showNotification) {
-            window.showNotification('❌ Fehler beim Filtern: ' + error.message, 'error');
-        }
-    }
-}
-
-// Fallback: Filtere die bestehende Tabelle durch Verstecken/Zeigen von Zeilen
-function filterExistingTable(assignment) {
-    console.log('🔄 Fallback: Filtere bestehende Tabelle');
-    
-    const tableRows = document.querySelectorAll('.master-table tbody tr');
+    // Alle Tabellenzeilen
+    const allRows = table.querySelectorAll('tr');
     let visibleCount = 0;
+    let totalCount = allRows.length;
     
-    tableRows.forEach(row => {
-        const masterCell = row.querySelector('td:nth-child(7)'); // Mitarbeiter-Spalte
-        const shouldShow = shouldShowRowForFilter(row, masterCell, assignment);
+    // Gehe durch jede Zeile
+    allRows.forEach(row => {
+        const shouldShow = shouldShowRow(row, assignment);
         
         if (shouldShow) {
             row.style.display = '';
+            row.style.opacity = '1';
             visibleCount++;
         } else {
             row.style.display = 'none';
+            row.style.opacity = '0.3';
         }
     });
     
-    // Filter-Info hinzufügen
-    addFilterInfoToTable(assignment, visibleCount, tableRows.length);
+    // Filter-Info anzeigen
+    showFilterResult(assignment, visibleCount, totalCount);
     
-    console.log(`🎯 ${visibleCount} von ${tableRows.length} Zeilen angezeigt`);
-    
-    if (window.showNotification) {
-        window.showNotification(`🔍 Tabellen-Filter: ${visibleCount} Bestellungen`, 'info');
-    }
+    // Buttons visuell aktualisieren
+    updateFilterButtons(assignment);
 }
 
-// Bestimme ob eine Tabellenzeile angezeigt werden soll
-function shouldShowRowForFilter(row, masterCell, assignment) {
-    if (!masterCell) return assignment === 'all';
+// Bestimme ob eine Zeile angezeigt werden soll
+function shouldShowRow(row, assignment) {
+    // Alle anzeigen
+    if (assignment === 'all') {
+        return true;
+    }
     
-    const text = masterCell.textContent || '';
+    // Hole die Mitarbeiter-Spalte (normalerweise Spalte 7)
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 7) {
+        return assignment === 'all';
+    }
+    
+    // Schaue in die Mitarbeiter-Spalte
+    const masterCell = cells[6]; // Index 6 = 7. Spalte
+    const masterText = masterCell ? masterCell.textContent.toLowerCase() : '';
+    
+    // Schaue auch in die erste Spalte nach Badges
+    const firstCell = cells[0];
+    const firstCellText = firstCell ? firstCell.textContent.toLowerCase() : '';
+    
+    const combinedText = masterText + ' ' + firstCellText;
     
     switch(assignment) {
         case 'mine':
-            return text.includes('Meine Bestellung') || text.includes('👤');
+            return combinedText.includes('meine') || 
+                   combinedText.includes('👤') || 
+                   combinedText.includes('übernommen') ||
+                   (window.currentMaster && combinedText.includes(window.currentMaster.name.toLowerCase()));
+            
         case 'others':
-            return text.includes('👥') && !text.includes('Nicht zugewiesen');
+            return (combinedText.includes('👥') || 
+                    (combinedText.includes('andere') && !combinedText.includes('nicht zugewiesen')) ||
+                    (combinedText.match(/[a-z]+\s+[a-z]+/) && !combinedText.includes('meine'))) &&
+                   !combinedText.includes('nicht zugewiesen') &&
+                   !combinedText.includes('verfügbar');
+            
         case 'unassigned':
-            return text.includes('Nicht zugewiesen') || text.includes('📋');
-        case 'all':
+            return combinedText.includes('nicht zugewiesen') || 
+                   combinedText.includes('📋') || 
+                   combinedText.includes('verfügbar') ||
+                   combinedText.includes('frei');
+            
         default:
             return true;
     }
 }
 
-// Füge Filter-Info zur bestehenden Tabelle hinzu
-function addFilterInfoToTable(assignment, visibleCount, totalCount) {
-    // Entferne alte Filter-Info
-    const oldInfo = document.querySelector('.table-filter-info');
-    if (oldInfo) oldInfo.remove();
-    
-    if (assignment === 'all') return;
-    
-    const filterInfo = document.createElement('div');
-    filterInfo.className = 'table-filter-info';
-    filterInfo.style.cssText = `
-        margin-bottom: 1rem;
-        padding: 1rem;
-        background: rgba(33,150,243,0.1);
-        border-radius: 10px;
-        border-left: 4px solid #2196f3;
-    `;
-    
-    const filterNames = {
+// Filter-Namen für Anzeige
+function getFilterName(assignment) {
+    const names = {
         'mine': '👤 Meine Bestellungen',
-        'others': '👥 Andere Mitarbeiter',
-        'unassigned': '📋 Nicht zugewiesen'
+        'others': '👥 Andere Mitarbeiter', 
+        'unassigned': '📋 Nicht zugewiesen',
+        'all': '📦 Alle Bestellungen'
     };
+    return names[assignment] || assignment;
+}
+
+// Zeige Filter-Ergebnis
+function showFilterResult(assignment, visibleCount, totalCount) {
+    // Entferne alte Filter-Info
+    const oldInfo = document.querySelector('.simple-filter-info');
+    if (oldInfo) {
+        oldInfo.remove();
+    }
+    
+    // Erstelle neue Filter-Info
+    const filterInfo = document.createElement('div');
+    filterInfo.className = 'simple-filter-info';
+    filterInfo.style.cssText = `
+        margin: 1rem 0;
+        padding: 1rem;
+        background: ${assignment === 'all' ? 'rgba(156,39,176,0.1)' : 'rgba(33,150,243,0.1)'};
+        border-radius: 10px;
+        border-left: 4px solid ${assignment === 'all' ? '#9c27b0' : '#2196f3'};
+        text-align: center;
+        animation: slideIn 0.3s ease;
+    `;
     
     filterInfo.innerHTML = `
-        <h4 style="color: #2196f3; margin-bottom: 0.5rem;">🔍 Aktiver Tabellen-Filter</h4>
-        <p style="margin: 0; color: #5d4037;">${filterNames[assignment]} (${visibleCount} von ${totalCount})</p>
-        <button class="btn" onclick="filterOrdersByAssignment('all')" style="width: auto; padding: 0.4rem 0.8rem; margin-top: 0.5rem; font-size: 0.8rem;">🔄 Alle anzeigen</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <strong style="color: ${assignment === 'all' ? '#9c27b0' : '#2196f3'}; font-size: 1.1rem;">
+                    🔍 ${getFilterName(assignment)}
+                </strong>
+                <div style="color: #5d4037; margin-top: 0.25rem;">
+                    ${visibleCount} von ${totalCount} Bestellungen
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${assignment !== 'all' ? `
+                    <button class="btn" onclick="filterOrdersByAssignment('all')" 
+                            style="background: #9c27b0; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        🔄 Alle anzeigen
+                    </button>
+                ` : ''}
+                <button class="btn" onclick="removeFilterInfo()" 
+                        style="background: #9e9e9e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                    ✕ Schließen
+                </button>
+            </div>
+        </div>
     `;
     
+    // Füge vor der Tabelle ein
     const table = document.querySelector('.master-table');
     if (table) {
         table.parentNode.insertBefore(filterInfo, table);
     }
+    
+    // Erfolgs-Benachrichtigung
+    if (window.showNotification) {
+        const message = assignment === 'all' ? 
+            `📦 Alle ${totalCount} Bestellungen angezeigt` :
+            `✅ ${visibleCount} Bestellungen gefiltert`;
+        window.showNotification(message, 'success');
+    }
 }
 
-// Globale Funktionen registrieren
+// Entferne Filter-Info
+function removeFilterInfo() {
+    const filterInfo = document.querySelector('.simple-filter-info');
+    if (filterInfo) {
+        filterInfo.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (filterInfo.parentNode) {
+                filterInfo.remove();
+            }
+        }, 300);
+    }
+}
+
+// Aktualisiere Filter-Button-Styling
+function updateFilterButtons(activeFilter) {
+    // Alle Filter-Buttons finden
+    const buttons = document.querySelectorAll('[onclick*="filterOrdersByAssignment"]');
+    
+    buttons.forEach(button => {
+        const onclick = button.getAttribute('onclick');
+        let buttonType = 'all';
+        
+        if (onclick.includes("'mine'")) buttonType = 'mine';
+        else if (onclick.includes("'others'")) buttonType = 'others';
+        else if (onclick.includes("'unassigned'")) buttonType = 'unassigned';
+        else if (onclick.includes("'all'")) buttonType = 'all';
+        
+        // Entferne aktive Klasse
+        button.classList.remove('filter-active');
+        button.style.transform = '';
+        button.style.boxShadow = '';
+        
+        // Füge aktive Klasse hinzu wenn es der aktive Filter ist
+        if (buttonType === activeFilter) {
+            button.classList.add('filter-active');
+            button.style.transform = 'translateY(-2px)';
+            button.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            button.style.opacity = '1';
+        } else {
+            button.style.opacity = '0.7';
+        }
+    });
+}
+
+// CSS für Animationen hinzufügen
+function addFilterCSS() {
+    const existingStyle = document.getElementById('simple-filter-css');
+    if (existingStyle) return;
+    
+    const style = document.createElement('style');
+    style.id = 'simple-filter-css';
+    style.textContent = `
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+        
+        .filter-active {
+            position: relative;
+        }
+        
+        .filter-active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 3px;
+            background: #ff6b35;
+            border-radius: 2px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Globale Funktionen
 window.filterOrdersByAssignment = filterOrdersByAssignment;
-window.debugOrdersAccess = debugOrdersAccess;
-window.getOrdersFromAnySource = getOrdersFromAnySource;
+window.removeFilterInfo = removeFilterInfo;
 
-console.log('🔧 Debug und Reparatur für Orders-Zugriff geladen');
+// CSS hinzufügen
+addFilterCSS();
 
-// Sofortiger Debug-Test
-setTimeout(() => {
-    console.log('🧪 Automatischer Debug-Test:');
-    debugOrdersAccess();
-}, 1000);
+// Erfolgs-Meldung
+if (window.showNotification) {
+    setTimeout(() => {
+        window.showNotification('✅ Einfache Tabellen-Filter geladen!', 'success');
+    }, 500);
+}
+
+console.log('✅ Einfache mobile-freundliche Tabellen-Filter geladen');
