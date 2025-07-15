@@ -3507,270 +3507,428 @@ function safeGenerateMasterOrderStats(orderList) {
 // ========== DEBUG UND REPARATUR FÜR BESTELLUNGEN-ZUGRIFF ==========
 // Ersetze die filterOrdersByAssignment Funktion komplett mit diesem Code:
 
-// ========== EINFACHE TABELLEN-FILTER - MOBILE FRIENDLY ==========
-// Ersetze die komplette filterOrdersByAssignment Funktion mit diesem Code:
+// ========== EINHEITLICHES FILTER-SYSTEM - KOMPLETTE REPARATUR ==========
+// Ersetze ALLE Filter-Funktionen in main.js mit diesem Code:
 
-// Super einfache Filter-Funktion die nur die Tabelle verwendet
-function filterOrdersByAssignment(assignment) {
-    // Sofortige Benachrichtigung
-    if (window.showNotification) {
-        window.showNotification(`🔍 Filtere nach: ${getFilterName(assignment)}`, 'info');
+// Globale Filter-State
+let currentAssignmentFilter = 'all';
+let currentStatusFilter = '';
+
+// Korrigierte Status-Zuordnung
+function getCorrectStatusFilter() {
+    return {
+        'pending': ['pending'],
+        'processing': ['processing1', 'processing2'], // Beide processing Stati
+        'completed': ['completed'],
+        'cancelled': ['cancelled']
+    };
+}
+
+// Erweiterte loadMasterOrders mit korrekten Filtern
+function loadMasterOrders() {
+    console.log('🔄 Lade Master Orders mit erweiterten Filtern');
+    
+    const statusFilter = document.getElementById('orderStatusFilter');
+    
+    function renderOrders(orderList = orders) {
+        if (!Array.isArray(orderList)) {
+            console.warn('Orders ist kein Array:', orderList);
+            document.getElementById('masterOrdersList').innerHTML = '<p>Keine Bestellungen verfügbar</p>';
+            return;
+        }
+        
+        // Erweiterte Statistiken
+        const statsHtml = generateMasterOrderStats(orderList);
+        
+        // Korrigierte Status-Option
+        const statusFilterHtml = `
+            <select id="orderStatusFilter" style="padding: 0.5rem; border: 2px solid #d7ccc8; border-radius: 8px; margin-right: 1rem;">
+                <option value="">Alle Status</option>
+                <option value="pending">⏳ Ausstehend</option>
+                <option value="processing">⚙️ In Bearbeitung (alle)</option>
+                <option value="completed">✅ Abgeschlossen</option>
+                <option value="cancelled">❌ Storniert</option>
+            </select>
+        `;
+        
+        document.getElementById('masterOrdersList').innerHTML = `
+            <!-- Filter-Sektion -->
+            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,255,255,0.9); border-radius: 10px; border: 2px solid #d7ccc8;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <h3 style="color: #ff6b35; margin: 0;">📦 Bestellverwaltung</h3>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <!-- Status Filter -->
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label style="font-size: 0.9rem; color: #8d6e63;">Status:</label>
+                            ${statusFilterHtml}
+                        </div>
+                        <!-- Export Button -->
+                        <button class="btn" onclick="exportOrdersCSV()" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">📥 Export</button>
+                    </div>
+                </div>
+                
+                <!-- Mitarbeiter Filter -->
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #d7ccc8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <label style="font-size: 0.9rem; color: #8d6e63; font-weight: bold;">👥 Mitarbeiter-Filter:</label>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="filter-btn filter-btn-mine ${currentAssignmentFilter === 'mine' ? 'active' : ''}" 
+                                    onclick="setAssignmentFilter('mine')" 
+                                    style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
+                                👤 Meine
+                            </button>
+                            <button class="filter-btn filter-btn-others ${currentAssignmentFilter === 'others' ? 'active' : ''}" 
+                                    onclick="setAssignmentFilter('others')" 
+                                    style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
+                                👥 Andere
+                            </button>
+                            <button class="filter-btn filter-btn-unassigned ${currentAssignmentFilter === 'unassigned' ? 'active' : ''}" 
+                                    onclick="setAssignmentFilter('unassigned')" 
+                                    style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
+                                📋 Frei
+                            </button>
+                            <button class="filter-btn filter-btn-all ${currentAssignmentFilter === 'all' ? 'active' : ''}" 
+                                    onclick="setAssignmentFilter('all')" 
+                                    style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
+                                📦 Alle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistiken -->
+            <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(255,107,53,0.1); border-radius: 10px;">
+                <h4 style="color: #ff6b35; margin-bottom: 1rem;">📊 Mitarbeiter-Übersicht</h4>
+                ${statsHtml}
+            </div>
+            
+            <!-- Bestelltabelle -->
+            <div id="ordersTableContainer">
+                ${generateOrdersTable(orderList)}
+            </div>
+        `;
+        
+        // Event Listener für Status-Filter
+        setTimeout(() => {
+            const statusSelect = document.getElementById('orderStatusFilter');
+            if (statusSelect) {
+                statusSelect.value = currentStatusFilter;
+                statusSelect.addEventListener('change', (e) => {
+                    currentStatusFilter = e.target.value;
+                    console.log('Status-Filter geändert:', currentStatusFilter);
+                    applyAllFilters();
+                });
+            }
+        }, 100);
     }
     
-    // Finde die Tabelle
-    const table = document.querySelector('.master-table tbody');
-    if (!table) {
-        if (window.showNotification) {
-            window.showNotification('❌ Tabelle nicht gefunden', 'error');
-        }
+    renderOrders();
+}
+
+// Generiere Bestelltabelle
+function generateOrdersTable(orderList) {
+    if (!Array.isArray(orderList) || orderList.length === 0) {
+        return `
+            <div style="text-align: center; padding: 3rem; color: #8d6e63;">
+                <div style="font-size: 2rem; margin-bottom: 1rem;">📭</div>
+                <h3>Keine Bestellungen gefunden</h3>
+                <p>Es gibt derzeit keine Bestellungen, die den Filterkriterien entsprechen.</p>
+            </div>
+        `;
+    }
+    
+    return `
+        <table class="master-table">
+            <thead>
+                <tr>
+                    <th>Bestellung</th>
+                    <th>Kunde</th>
+                    <th>Artikel</th>
+                    <th>Gesamt</th>
+                    <th>Zahlung</th>
+                    <th>Status</th>
+                    <th>Mitarbeiter</th>
+                    <th>Datum</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${orderList
+                    .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                    .map(order => createDetailedOrderRow(order))
+                    .join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Detaillierte Bestellzeile erstellen
+function createDetailedOrderRow(order) {
+    const hasCancellationRequest = typeof hasActiveCancellationRequest === 'function' ? 
+        hasActiveCancellationRequest(order) : false;
+    const canPerformActions = typeof canPerformOrderActions === 'function' ? 
+        canPerformOrderActions(order) : true;
+    
+    const assignmentType = getOrderAssignmentType(order);
+    const rowClass = getOrderRowClass(assignmentType, order.status);
+    const assignmentBadge = getAssignmentBadge(assignmentType);
+    const assignmentDetails = getAssignmentDetails(order, assignmentType);
+    
+    return `
+        <tr class="${rowClass}" data-order-id="${order.orderId}" data-status="${order.status}" data-assignment="${assignmentType}">
+            <td>
+                <div class="order-id-container">
+                    <strong>#${order.orderId}</strong>
+                    ${assignmentBadge}
+                    <br>
+                    <small style="color: #8d6e63;">📦 ${order.trackingNumber || 'Wird generiert'}</small>
+                    ${hasCancellationRequest ? `
+                        <br><span class="cancellation-indicator" style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; animation: pulse 2s infinite;">
+                            ⚠️ STORNIERUNG ANGEFRAGT
+                        </span>
+                    ` : ''}
+                </div>
+            </td>
+            <td>
+                <strong>${order.customerName}</strong><br>
+                <small style="color: #8d6e63;">${order.customerEmail}</small>
+            </td>
+            <td>
+                <strong>${order.items ? order.items.length : 0}</strong> Artikel<br>
+                <small style="color: #8d6e63;">
+                    ${order.items ? order.items.slice(0, 2).map(item => item.name || 'Produkt').join(', ') : 'Keine Details'}
+                    ${order.items && order.items.length > 2 ? '...' : ''}
+                </small>
+            </td>
+            <td>
+                <div><strong style="color: #ff6b35;">€${order.total.toFixed(2)}</strong></div>
+                ${order.shippingCost && order.shippingCost > 0 ? 
+                    `<small style="color: #8d6e63;">inkl. €${order.shippingCost.toFixed(2)} Versand</small>` : 
+                    `<small style="color: #4caf50;">versandkostenfrei</small>`}
+            </td>
+            <td>
+                <div style="font-size: 0.9rem;">${order.paymentMethod || 'Nicht angegeben'}</div>
+            </td>
+            <td>
+                <select class="status-select ${!canPerformActions ? 'select-disabled' : ''}" 
+                        onchange="${!canPerformActions ? 'alert(\'Stornierungsanfrage aktiv - bitte zuerst bearbeiten\')' : `updateOrderStatus('${order.orderId}', this.value)`}" 
+                        ${!canPerformActions ? 'disabled style="background: #f0f0f0; cursor: not-allowed;"' : ''}>
+                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>⏳ Ausstehend</option>
+                    <option value="processing1" ${order.status === 'processing1' ? 'selected' : ''}>⚙️ In Bearbeitung</option>
+                    <option value="processing2" ${order.status === 'processing2' ? 'selected' : ''}>📦 Wird versendet</option>
+                    <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>✅ Abgeschlossen</option>
+                    <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>❌ Storniert</option>
+                </select>
+                ${hasCancellationRequest ? `
+                    <br><small style="color: #ff9800; font-weight: bold; font-size: 0.8rem;">
+                        Kunde möchte stornieren!
+                    </small>
+                ` : ''}
+            </td>
+            <td>
+                <div class="assignment-details">
+                    ${assignmentDetails}
+                </div>
+            </td>
+            <td>
+                <div><strong>${new Date(order.orderDate).toLocaleDateString('de-DE')}</strong></div>
+                <small style="color: #8d6e63;">${new Date(order.orderDate).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</small>
+            </td>
+            <td>
+                <div class="order-actions" style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                    <button class="action-btn view" onclick="viewOrderDetailsInModal ? viewOrderDetailsInModal('${order.orderId}') : alert('Details für ${order.orderId}')" title="Details anzeigen" style="background: #2196f3;">👁️</button>
+                    ${getContextualActionButton(order, assignmentType, canPerformActions)}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Bestimme Zuweisungstyp einer Bestellung
+function getOrderAssignmentType(order) {
+    if (!currentMaster) return 'unassigned';
+    
+    const masterName = currentMaster.name;
+    
+    if (order.processedBy === masterName || 
+        order.assignedTo === masterName || 
+        order.statusUpdatedBy === masterName ||
+        order.cancelledBy === masterName) {
+        return 'mine';
+    }
+    
+    if (order.processedBy || order.assignedTo || order.statusUpdatedBy || order.cancelledBy) {
+        return 'others';
+    }
+    
+    return 'unassigned';
+}
+
+// CSS-Klasse für Tabellenzeile
+function getOrderRowClass(assignmentType, status) {
+    let classes = ['master-order-row'];
+    
+    // Zuweisungstyp
+    switch(assignmentType) {
+        case 'mine':
+            classes.push('my-order');
+            break;
+        case 'others':
+            classes.push('other-master-order');
+            break;
+        case 'unassigned':
+            classes.push('unassigned-order');
+            break;
+    }
+    
+    // Status-spezifische Klassen
+    if (status === 'pending') {
+        classes.push('urgent-order');
+    } else if (status === 'cancelled') {
+        classes.push('cancelled-order');
+    }
+    
+    return classes.join(' ');
+}
+
+// Zuweisungs-Badge
+function getAssignmentBadge(assignmentType) {
+    const badges = {
+        'mine': '<span class="assignment-badge my-assignment">👤 MEINE</span>',
+        'others': '<span class="assignment-badge other-assignment">👥 ANDERE</span>',
+        'unassigned': '<span class="assignment-badge unassigned">📋 FREI</span>'
+    };
+    return badges[assignmentType] || '';
+}
+
+// Zuweisungsdetails
+function getAssignmentDetails(order, assignmentType) {
+    switch(assignmentType) {
+        case 'mine':
+            return `
+                <div class="my-assignment-details" style="color: #4caf50; background: rgba(76,175,80,0.1); padding: 0.4rem; border-radius: 6px; border-left: 3px solid #4caf50;">
+                    <strong>👤 Meine Bestellung</strong>
+                    ${order.processedBy === currentMaster?.name ? '<br><small>✅ Von mir übernommen</small>' : ''}
+                    ${order.statusUpdatedBy === currentMaster?.name ? '<br><small>🔄 Zuletzt von mir bearbeitet</small>' : ''}
+                </div>
+            `;
+        case 'others':
+            const assignedMaster = order.processedBy || order.assignedTo || order.statusUpdatedBy || order.cancelledBy;
+            return `
+                <div class="other-assignment-details" style="color: #2196f3; background: rgba(33,150,243,0.1); padding: 0.4rem; border-radius: 6px; border-left: 3px solid #2196f3;">
+                    <strong>👥 ${assignedMaster}</strong>
+                    ${order.processedBy ? '<br><small>⚙️ Bearbeiter</small>' : ''}
+                    ${order.statusUpdatedBy && order.statusUpdatedBy !== order.processedBy ? `<br><small>🔄 Status-Update</small>` : ''}
+                </div>
+            `;
+        case 'unassigned':
+            return `
+                <div class="unassigned-details" style="color: #ff9800; background: rgba(255,152,0,0.1); padding: 0.4rem; border-radius: 6px; border-left: 3px solid #ff9800;">
+                    <strong>📋 Nicht zugewiesen</strong>
+                    <br><small style="color: #4caf50;">✨ Zum Übernehmen verfügbar</small>
+                </div>
+            `;
+        default:
+            return '<div style="color: #8d6e63;">Unbekannt</div>';
+    }
+}
+
+// Kontextuelle Aktions-Buttons
+function getContextualActionButton(order, assignmentType, canPerformActions) {
+    if (order.status === 'completed' || order.status === 'cancelled') {
+        return ''; // Keine Aktionen für abgeschlossene/stornierte Bestellungen
+    }
+    
+    if (!canPerformActions) {
+        return `<button class="action-btn warning" disabled title="Stornierungsanfrage muss zuerst bearbeitet werden" style="background: #ff9800; cursor: not-allowed; opacity: 0.7;">⚠️</button>`;
+    }
+    
+    switch(assignmentType) {
+        case 'mine':
+            if (order.status === 'pending') {
+                return `<button class="action-btn approve" onclick="processOrder ? processOrder('${order.orderId}') : alert('Bearbeitung für ${order.orderId} starten')" title="Bearbeitung starten" style="background: #4caf50;">▶️</button>`;
+            } else if (order.status === 'processing1') {
+                return `<button class="action-btn edit" onclick="advanceToShipping ? advanceToShipping('${order.orderId}') : alert('${order.orderId} zum Versand weiterleiten')" title="Zum Versand weiterleiten" style="background: #2196f3;">📦</button>`;
+            } else if (order.status === 'processing2') {
+                return `<button class="action-btn approve" onclick="markAsCompleted ? markAsCompleted('${order.orderId}') : alert('${order.orderId} als versendet markieren')" title="Als versendet markieren" style="background: #4caf50;">🚚</button>`;
+            }
+            break;
+            
+        case 'unassigned':
+            return `<button class="action-btn approve" onclick="processOrder ? processOrder('${order.orderId}') : alert('Bestellung ${order.orderId} übernehmen')" title="Bestellung übernehmen" style="background: #4caf50;">👤</button>`;
+            
+        case 'others':
+            return `<button class="action-btn view" onclick="viewOrderDetailsInModal ? viewOrderDetailsInModal('${order.orderId}') : alert('Details für ${order.orderId} - Bearbeitung durch anderen Mitarbeiter')" title="Nur ansehen (andere Zuordnung)" style="background: #9e9e9e;">👁️</button>`;
+    }
+    
+    return '';
+}
+
+// Setze Mitarbeiter-Filter
+function setAssignmentFilter(assignment) {
+    currentAssignmentFilter = assignment;
+    console.log('Mitarbeiter-Filter gesetzt:', assignment);
+    
+    // Aktualisiere Button-Styling
+    updateFilterButtonStyling();
+    
+    // Wende alle Filter an
+    applyAllFilters();
+    
+    // Benachrichtigung
+    if (window.showNotification) {
+        const filterNames = {
+            'mine': '👤 Meine Bestellungen',
+            'others': '👥 Andere Mitarbeiter',
+            'unassigned': '📋 Nicht zugewiesen',
+            'all': '📦 Alle Bestellungen'
+        };
+        window.showNotification(`🔍 Filter: ${filterNames[assignment]}`, 'info');
+    }
+}
+
+// Aktualisiere Button-Styling
+function updateFilterButtonStyling() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.transform = '';
+        btn.style.boxShadow = '';
+        btn.style.opacity = '0.7';
+    });
+    
+    const activeBtn = document.querySelector(`.filter-btn-${currentAssignmentFilter}`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.transform = 'translateY(-2px)';
+        activeBtn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+        activeBtn.style.opacity = '1';
+    }
+}
+
+// Wende alle Filter gleichzeitig an
+function applyAllFilters() {
+    if (!orders || !Array.isArray(orders)) {
+        console.warn('Keine Orders zum Filtern verfügbar');
         return;
     }
     
-    // Alle Tabellenzeilen
-    const allRows = table.querySelectorAll('tr');
-    let visibleCount = 0;
-    let totalCount = allRows.length;
+    let filteredOrders = [...orders];
     
-    // Gehe durch jede Zeile
-    allRows.forEach(row => {
-        const shouldShow = shouldShowRow(row, assignment);
-        
-        if (shouldShow) {
-            row.style.display = '';
-            row.style.opacity = '1';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-            row.style.opacity = '0.3';
-        }
-    });
-    
-    // Filter-Info anzeigen
-    showFilterResult(assignment, visibleCount, totalCount);
-    
-    // Buttons visuell aktualisieren
-    updateFilterButtons(assignment);
-}
-
-// Bestimme ob eine Zeile angezeigt werden soll
-function shouldShowRow(row, assignment) {
-    // Alle anzeigen
-    if (assignment === 'all') {
-        return true;
+    // Status-Filter anwenden
+    if (currentStatusFilter) {
+        const statusMapping = getCorrectStatusFilter();
+        const allowedStatuses = statusMapping[currentStatusFilter] || [currentStatusFilter];
+        filteredOrders = filteredOrders.filter(order => allowedStatuses.includes(order.status));
+        console.log(`Status-Filter '${currentStatusFilter}': ${filteredOrders.length} Bestellungen`);
     }
     
-    // Hole die Mitarbeiter-Spalte (normalerweise Spalte 7)
-    const cells = row.querySelectorAll('td');
-    if (cells.length < 7) {
-        return assignment === 'all';
+    // Mitarbeiter-Filter anwenden
+    if (currentAssignmentFilter !== 'all') {
+        filteredOrders = filteredOrders.filter(order => {
+            const assignmentType = getOrderAssignmentType(order);
+            return assignmentType === currentAssignmentFilter;
+        });
+        console.log(`Mitarbeiter-Filter '${currentAssignmentFilter}': ${filteredOrders.length} Bestellungen`);
     }
-    
-    // Schaue in die Mitarbeiter-Spalte
-    const masterCell = cells[6]; // Index 6 = 7. Spalte
-    const masterText = masterCell ? masterCell.textContent.toLowerCase() : '';
-    
-    // Schaue auch in die erste Spalte nach Badges
-    const firstCell = cells[0];
-    const firstCellText = firstCell ? firstCell.textContent.toLowerCase() : '';
-    
-    const combinedText = masterText + ' ' + firstCellText;
-    
-    switch(assignment) {
-        case 'mine':
-            return combinedText.includes('meine') || 
-                   combinedText.includes('👤') || 
-                   combinedText.includes('übernommen') ||
-                   (window.currentMaster && combinedText.includes(window.currentMaster.name.toLowerCase()));
-            
-        case 'others':
-            return (combinedText.includes('👥') || 
-                    (combinedText.includes('andere') && !combinedText.includes('nicht zugewiesen')) ||
-                    (combinedText.match(/[a-z]+\s+[a-z]+/) && !combinedText.includes('meine'))) &&
-                   !combinedText.includes('nicht zugewiesen') &&
-                   !combinedText.includes('verfügbar');
-            
-        case 'unassigned':
-            return combinedText.includes('nicht zugewiesen') || 
-                   combinedText.includes('📋') || 
-                   combinedText.includes('verfügbar') ||
-                   combinedText.includes('frei');
-            
-        default:
-            return true;
-    }
-}
-
-// Filter-Namen für Anzeige
-function getFilterName(assignment) {
-    const names = {
-        'mine': '👤 Meine Bestellungen',
-        'others': '👥 Andere Mitarbeiter', 
-        'unassigned': '📋 Nicht zugewiesen',
-        'all': '📦 Alle Bestellungen'
-    };
-    return names[assignment] || assignment;
-}
-
-// Zeige Filter-Ergebnis
-function showFilterResult(assignment, visibleCount, totalCount) {
-    // Entferne alte Filter-Info
-    const oldInfo = document.querySelector('.simple-filter-info');
-    if (oldInfo) {
-        oldInfo.remove();
-    }
-    
-    // Erstelle neue Filter-Info
-    const filterInfo = document.createElement('div');
-    filterInfo.className = 'simple-filter-info';
-    filterInfo.style.cssText = `
-        margin: 1rem 0;
-        padding: 1rem;
-        background: ${assignment === 'all' ? 'rgba(156,39,176,0.1)' : 'rgba(33,150,243,0.1)'};
-        border-radius: 10px;
-        border-left: 4px solid ${assignment === 'all' ? '#9c27b0' : '#2196f3'};
-        text-align: center;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    filterInfo.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div>
-                <strong style="color: ${assignment === 'all' ? '#9c27b0' : '#2196f3'}; font-size: 1.1rem;">
-                    🔍 ${getFilterName(assignment)}
-                </strong>
-                <div style="color: #5d4037; margin-top: 0.25rem;">
-                    ${visibleCount} von ${totalCount} Bestellungen
-                </div>
-            </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                ${assignment !== 'all' ? `
-                    <button class="btn" onclick="filterOrdersByAssignment('all')" 
-                            style="background: #9c27b0; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
-                        🔄 Alle anzeigen
-                    </button>
-                ` : ''}
-                <button class="btn" onclick="removeFilterInfo()" 
-                        style="background: #9e9e9e; width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
-                    ✕ Schließen
-                </button>
-            </div>
-        </div>
-    `;
-    
-    // Füge vor der Tabelle ein
-    const table = document.querySelector('.master-table');
-    if (table) {
-        table.parentNode.insertBefore(filterInfo, table);
-    }
-    
-    // Erfolgs-Benachrichtigung
-    if (window.showNotification) {
-        const message = assignment === 'all' ? 
-            `📦 Alle ${totalCount} Bestellungen angezeigt` :
-            `✅ ${visibleCount} Bestellungen gefiltert`;
-        window.showNotification(message, 'success');
-    }
-}
-
-// Entferne Filter-Info
-function removeFilterInfo() {
-    const filterInfo = document.querySelector('.simple-filter-info');
-    if (filterInfo) {
-        filterInfo.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            if (filterInfo.parentNode) {
-                filterInfo.remove();
-            }
-        }, 300);
-    }
-}
-
-// Aktualisiere Filter-Button-Styling
-function updateFilterButtons(activeFilter) {
-    // Alle Filter-Buttons finden
-    const buttons = document.querySelectorAll('[onclick*="filterOrdersByAssignment"]');
-    
-    buttons.forEach(button => {
-        const onclick = button.getAttribute('onclick');
-        let buttonType = 'all';
-        
-        if (onclick.includes("'mine'")) buttonType = 'mine';
-        else if (onclick.includes("'others'")) buttonType = 'others';
-        else if (onclick.includes("'unassigned'")) buttonType = 'unassigned';
-        else if (onclick.includes("'all'")) buttonType = 'all';
-        
-        // Entferne aktive Klasse
-        button.classList.remove('filter-active');
-        button.style.transform = '';
-        button.style.boxShadow = '';
-        
-        // Füge aktive Klasse hinzu wenn es der aktive Filter ist
-        if (buttonType === activeFilter) {
-            button.classList.add('filter-active');
-            button.style.transform = 'translateY(-2px)';
-            button.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-            button.style.opacity = '1';
-        } else {
-            button.style.opacity = '0.7';
-        }
-    });
-}
-
-// CSS für Animationen hinzufügen
-function addFilterCSS() {
-    const existingStyle = document.getElementById('simple-filter-css');
-    if (existingStyle) return;
-    
-    const style = document.createElement('style');
-    style.id = 'simple-filter-css';
-    style.textContent = `
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes slideOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(-20px); }
-        }
-        
-        .filter-active {
-            position: relative;
-        }
-        
-        .filter-active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            height: 3px;
-            background: #ff6b35;
-            border-radius: 2px;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Globale Funktionen
-window.filterOrdersByAssignment = filterOrdersByAssignment;
-window.removeFilterInfo = removeFilterInfo;
-
-// CSS hinzufügen
-addFilterCSS();
-
-// Erfolgs-Meldung
-if (window.showNotification) {
-    setTimeout(() => {
-        window.showNotification('✅ Einfache Tabellen-Filter geladen!', 'success');
-    }, 500);
-}
-
-console.log('✅ Einfache mobile-freundliche Tabellen-Filter geladen');
+ 
