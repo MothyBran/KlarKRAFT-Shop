@@ -3906,9 +3906,6 @@ function updateFilterButtonStyling() {
     }
 }
 
-// Wende alle Filter gleichzeitig an
-function applyAllFilters() {
-
 // ========== REPARATUR: STATISTIKEN IMMER MIT GESAMTZAHLEN ==========
 // Ersetze nur die applyAllFilters Funktion in main.js:
 
