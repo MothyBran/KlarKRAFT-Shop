@@ -4079,55 +4079,6 @@ function generateMasterOrderStats(orderList) {
     `;
 }
 
-// Globale Funktionen hinzufügen
-window.clearAllFilters = clearAllFilters;
-
-console.log('✅ Statistiken-Fix: Zeigen immer Gesamtzahlen, unabhängig von Filtern');
-
-// Generiere Mitarbeiter-Statistiken
-function generateMasterOrderStats(orderList) {
-    if (!Array.isArray(orderList)) {
-        return '<p>Keine Daten verfügbar</p>';
-    }
-    
-    const myOrders = orderList.filter(order => getOrderAssignmentType(order) === 'mine');
-    const otherOrders = orderList.filter(order => getOrderAssignmentType(order) === 'others');
-    const unassignedOrders = orderList.filter(order => getOrderAssignmentType(order) === 'unassigned');
-    
-    const myActiveOrders = myOrders.filter(order => 
-        ['pending', 'processing1', 'processing2'].includes(order.status)
-    );
-    
-    return `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
-            <div class="master-assignment-stat my-orders ${currentAssignmentFilter === 'mine' ? 'active' : ''}" onclick="setAssignmentFilter('mine')" style="cursor: pointer;">
-                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">👤</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${myOrders.length}</div>
-                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Meine Bestellungen</div>
-                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">${myActiveOrders.length} aktiv</div>
-            </div>
-            <div class="master-assignment-stat other-masters ${currentAssignmentFilter === 'others' ? 'active' : ''}" onclick="setAssignmentFilter('others')" style="cursor: pointer;">
-                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">👥</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${otherOrders.length}</div>
-                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Andere Mitarbeiter</div>
-                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Team</div>
-            </div>
-            <div class="master-assignment-stat unassigned ${currentAssignmentFilter === 'unassigned' ? 'active' : ''}" onclick="setAssignmentFilter('unassigned')" style="cursor: pointer;">
-                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">📋</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${unassignedOrders.length}</div>
-                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Nicht zugewiesen</div>
-                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Verfügbar</div>
-            </div>
-            <div class="master-assignment-stat total ${currentAssignmentFilter === 'all' ? 'active' : ''}" onclick="setAssignmentFilter('all')" style="cursor: pointer;">
-                <div style="font-size: 1.8rem; margin-bottom: 0.5rem; opacity: 0.8;">📦</div>
-                <div style="font-size: 1.8rem; font-weight: bold; color: #5d4037; margin-bottom: 0.25rem;">${orderList.length}</div>
-                <div style="font-size: 0.9rem; color: #8d6e63; font-weight: 500; margin-bottom: 0.25rem;">Gesamt</div>
-                <div style="font-size: 0.8rem; color: #8d6e63; opacity: 0.8;">Alle Bestellungen</div>
-            </div>
-        </div>
-    `;
-}
-
 // Globale Funktionen
 window.setAssignmentFilter = setAssignmentFilter;
 window.applyAllFilters = applyAllFilters;
